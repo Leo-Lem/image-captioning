@@ -1,5 +1,5 @@
 DIR=${1:-"/workspaces/w24/bai/paper/src"}
-FILE=$DIR/${2:-"out/__assembled__"}.py
+FILE=$DIR/${2:-".out/__assembled__"}.py
 
 # 'compile' all python files to the model.py file
 if [ -f $FILE ]; then
@@ -19,4 +19,4 @@ sed -i 's/from data import .*//g' $FILE
 sed -i 's/from models import .*//g' $FILE
 sed -i 's/from eval import .*//g' $FILE
 
-printf "Assembled python files to $FILE\n"
+printf "Assembled to $FILE\n"

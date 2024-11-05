@@ -1,14 +1,13 @@
 from torch import Tensor
+from torch.nn import Module
 
-from .checkpoint import CheckpointModule
 from .encoder import ImageEncoder
 from .decoder import CaptionDecoder
 
 
-class ImageCaption(CheckpointModule):
-    def __init__(self, encoder: ImageEncoder, decoder: CaptionDecoder, checkpoint_dir: str):
-        super().__init__(
-            f"{checkpoint_dir}/{encoder.__class__.__name__}-{decoder.__class__.__name__}.checkpoint")
+class ImageCaption(Module):
+    def __init__(self, encoder: ImageEncoder, decoder: CaptionDecoder):
+        super().__init__()
         self.encoder = encoder
         self.decoder = decoder
 

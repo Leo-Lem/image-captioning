@@ -13,17 +13,17 @@ from .vocabulary import Vocabulary
 
 class FlickrDataset(Dataset):
     def __init__(self,
-                 path: str,
+                 res_dir: str,
+                 out_dir: str,
                  caption_limit: int = None,
                  images_folder: str = "Images",
                  captions_file: str = "captions.csv",
-                 data_file: str = "preprocessed.pkl",
-                 image_transform: Compose = None,
                  vocabulary_threshold: int = 5,
+                 image_transform: Compose = None,
                  len_captions: int = 40):
-        self.image_path = os.path.join(path, images_folder)
-        self.captions_file = os.path.join(path, captions_file)
-        self.data_path = os.path.join(path, data_file)
+        self.image_path = os.path.join(res_dir, images_folder)
+        self.captions_file = os.path.join(res_dir, captions_file)
+        self.data_path = os.path.join(out_dir, "data.pkl")
         self.caption_limit = caption_limit
         self.len_captions = len_captions
         self.image_transform = image_transform or Compose([
@@ -32,29 +32,26 @@ class FlickrDataset(Dataset):
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
 
-        if os.path.exists(self.data_path) and caption_limit is None:
-            print("Loading preprocessed data...")
-            self.vocabulary, self.images, self.captions = self._load()
+        if os.path.exists(self.data_path):
+            self._load()
         else:
-            self.vocabulary, self.images, self.captions = self._process(
-                vocabulary_threshold)
-            print("Saving preprocessed data...")
-            self._save(self.vocabulary, self.images, self.captions)
+            self._process(vocabulary_threshold)
+            self._save()
 
-    def _save(self, vocabulary: Vocabulary, images: Tensor, captions: Tensor):
+    def _save(self):
         with open(self.data_path, 'wb') as f:
-            dump({'images': images,
-                  'captions': captions,
-                  'vocabulary': vocabulary}, f)
+            dump({'vocabulary': self.vocabulary,
+                  'images': self.images,
+                  'captions': self.captions}, f)
 
-    def _load(self) -> tuple[Vocabulary, Tensor, Tensor]:
+    def _load(self):
         with open(self.data_path, 'rb') as f:
             data = load(f)
-            return (data['vocabulary'],
-                    data['images'],
-                    data['captions'])
+            self.vocabulary = data['vocabulary']
+            self.images = data['images']
+            self.captions = data['captions']
 
-    def _process(self, vocabulary_threshold: int) -> tuple[Vocabulary, Tensor, Tensor]:
+    def _process(self, vocabulary_threshold: int):
         data = read_csv(self.captions_file, nrows=self.caption_limit)
         self.vocabulary = Vocabulary(
             data['caption'].tolist(), threshold=vocabulary_threshold)
@@ -75,7 +72,8 @@ class FlickrDataset(Dataset):
                 captions[img_index, cap_index] = \
                     self.caption_to_tensor(raw_caption)
 
-        return self.vocabulary, images, captions
+        self.images = images
+        self.captions = captions
 
     def __len__(self):
         return self.captions.size(0) * self.captions.size(1)

@@ -1,28 +1,39 @@
+from matplotlib import pyplot as plt
 from torch import cuda, device
 from torch.utils.data import random_split, DataLoader
+from pandas import DataFrame
+from tqdm import trange
 
 from data import FlickrDataset
 from models import ImageCaption, ResnetEncoder, VGGEncoder, GRUDecoder, LSTMDecoder
-from eval import train, evaluate
+from eval import train, evaluate, load, save
 
-DIR = "out"  # "/content/drive/MyDrive/flickr8k"
-CAPTION_LIMIT = None
+RES_DIR = "res"
+OUT_DIR = ".out"
+CAPTION_LIMIT = 10
 EPOCHS = 5
-DEVICE = device("cuda" if cuda.is_available() else "cpu")
-BATCH_SIZE = 800 if cuda.is_available() else 400
-NUM_WORKERS = 2 if cuda.is_available() else 0
-PIN_MEMORY = cuda.is_available()
+
+IS_GPU = cuda.is_available()
+DEVICE = device("cuda" if IS_GPU else "cpu")
+BATCH_SIZE = 800 if IS_GPU else 400
+NUM_WORKERS = 2 if IS_GPU else 0
 
 # --- Data ---
-dataset = FlickrDataset(path=DIR, caption_limit=CAPTION_LIMIT)
+dataset = FlickrDataset(res_dir=RES_DIR,
+                        out_dir=OUT_DIR,
+                        caption_limit=CAPTION_LIMIT)
 train_dataset, eval_dataset = random_split(dataset, [.8, .2])
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE,
-                          num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY)
-eval_loader = DataLoader(eval_dataset, batch_size=BATCH_SIZE,
-                         num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY)
+train_loader = DataLoader(train_dataset,
+                          batch_size=BATCH_SIZE,
+                          num_workers=NUM_WORKERS,
+                          pin_memory=IS_GPU)
+eval_loader = DataLoader(eval_dataset,
+                         batch_size=BATCH_SIZE,
+                         num_workers=NUM_WORKERS,
+                         pin_memory=IS_GPU)
 
 
-# --- Model ---
+# --- Models ---
 models = {
     "resnet-gru": (ResnetEncoder(), GRUDecoder(vocabulary_size=len(dataset.vocabulary), feature_size=2048)),
     "vgg-gru": (VGGEncoder(), GRUDecoder(vocabulary_size=len(dataset.vocabulary), feature_size=512)),
@@ -31,17 +42,19 @@ models = {
 }
 
 
-def train_and_evaluate(encoder, decoder) -> tuple[str, float]:
-    model = ImageCaption(encoder, decoder, checkpoint_dir=DIR).to(DEVICE)
-    train(model, train_loader, epochs=EPOCHS, device=DEVICE)
-    return evaluate(model, eval_loader, dataset, device=DEVICE)
+# --- Training & Evaluation ---
+results = DataFrame(columns=models.keys())
+for epoch in trange(EPOCHS):
+    for name, (encoder, decoder) in models.items():
+        print(f"Training {name}")
+        model = ImageCaption(encoder, decoder).to(DEVICE)
+        load(model, epoch, OUT_DIR)
+        train(model, train_loader, epochs=EPOCHS, device=DEVICE)
+        save(model, epoch, OUT_DIR)
+        results.loc[epoch, name] = evaluate(
+            model, eval_loader, dataset, device=DEVICE)
+results.to_csv(f"{OUT_DIR}/results.csv")
 
-
-with open(f"{DIR}/results.txt", "a") as f:
-    f.write("\nResults\n")
-for name, (encoder, decoder) in models.items():
-    print(f"Training {name}")
-    result = train_and_evaluate(encoder, decoder)
-    print(f"BLEU: {result}")
-    with open(f"{DIR}/results.txt", "a") as f:
-        f.write(f"{name}: {result}\n")
+# --- Results ---
+results.plot()
+plt.savefig(f"{OUT_DIR}/results.png")
