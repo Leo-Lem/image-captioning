@@ -52,7 +52,7 @@ for name, (encoder, decoder) in models.items():
     model = ImageCaption(encoder, decoder).to(DEVICE)
     for epoch in trange(1, EPOCHS+1):
         if epoch in results.index and results.at[epoch, name] > 0:
-            print(f"Skipping epoch {epoch} for {name}.")
+            print(f"Loaded results in epoch {epoch} for {name}, skipping.")
             continue
 
         try:
