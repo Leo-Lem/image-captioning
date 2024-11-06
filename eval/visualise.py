@@ -1,9 +1,9 @@
-from PIL.Image import Image
+from PIL import Image
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
 
 
-def visualise(image: Image, caption: str):
+def visualise(image: Image.Image, caption: str):
     """
     Display an image and its caption.
 

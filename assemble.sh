@@ -1,4 +1,4 @@
-DIR=${1:-"/workspaces/w24/bai/paper/src"}
+DIR=${1:-"/workspaces/code"}
 FILE=$DIR/${2:-".out/__assembled__"}.py
 
 # 'compile' all python files to the model.py file

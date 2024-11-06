@@ -1,17 +1,18 @@
+import os
 from matplotlib import pyplot as plt
 from torch import cuda, device
 from torch.utils.data import random_split, DataLoader
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 from tqdm import trange
 
 from data import FlickrDataset
 from models import ImageCaption, ResnetEncoder, VGGEncoder, GRUDecoder, LSTMDecoder
-from eval import train, evaluate, load, save
+from eval import train, evaluate, load_model, save_model
 
 RES_DIR = "res"
 OUT_DIR = ".out"
-CAPTION_LIMIT = 10
-EPOCHS = 5
+CAPTION_LIMIT = None
+EPOCHS = 10
 
 IS_GPU = cuda.is_available()
 DEVICE = device("cuda" if IS_GPU else "cpu")
@@ -43,18 +44,27 @@ models = {
 
 
 # --- Training & Evaluation ---
-results = DataFrame(columns=models.keys())
-for epoch in trange(EPOCHS):
-    for name, (encoder, decoder) in models.items():
-        print(f"Training {name}")
-        model = ImageCaption(encoder, decoder).to(DEVICE)
-        load(model, epoch, OUT_DIR)
-        train(model, train_loader, epochs=EPOCHS, device=DEVICE)
-        save(model, epoch, OUT_DIR)
-        results.loc[epoch, name] = evaluate(
-            model, eval_loader, dataset, device=DEVICE)
-results.to_csv(f"{OUT_DIR}/results.csv")
+results_path = os.path.join(OUT_DIR, "results.csv")
+results = read_csv(results_path, index_col=0) \
+    if os.path.exists(results_path) else DataFrame(columns=models.keys())
 
-# --- Results ---
-results.plot()
-plt.savefig(f"{OUT_DIR}/results.png")
+for name, (encoder, decoder) in models.items():
+    model = ImageCaption(encoder, decoder).to(DEVICE)
+    for epoch in trange(1, EPOCHS+1):
+        if epoch in results.index and results.at[epoch, name] > 0:
+            print(f"Skipping epoch {epoch} for {name}.")
+            continue
+
+        try:
+            load_model(model, name, epoch, path=OUT_DIR)
+            print(f"Loaded {name} in epoch {epoch}, skipping training.")
+        except FileNotFoundError:
+            train(model, train_loader, device=DEVICE)
+            save_model(model, name, epoch, path=OUT_DIR)
+
+        results.at[epoch, name] = evaluate(
+            model, eval_loader, dataset, device=DEVICE)
+        results.to_csv(results_path)
+        results.plot(xlabel="Epoch", ylabel="BLEU Score",
+                     xticks=range(1, EPOCHS+1))
+        plt.savefig(f"{OUT_DIR}/results.png")
