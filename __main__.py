@@ -1,1 +1,6 @@
-print("Nothing to see here, move along…")
+from src import reformat, preprocess, train
+
+reformat()
+
+train = preprocess("train")
+val = preprocess("val")
