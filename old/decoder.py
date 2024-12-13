@@ -1,6 +1,6 @@
 from torch import Tensor, tensor, full, cat, softmax, float32
 from torch.nn import Module, Embedding, Linear, GRUCell, LSTMCell
-from data import Vocabulary
+from old import Vocabulary
 
 
 class CaptionDecoder(Module):

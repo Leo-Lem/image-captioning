@@ -4,7 +4,7 @@ from nltk.translate.bleu_score import corpus_bleu
 from tqdm import tqdm
 
 from models import ImageCaption
-from data import FlickrDataset
+from old import FlickrDataset
 
 
 def evaluate(model: ImageCaption,
