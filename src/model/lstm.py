@@ -18,6 +18,7 @@ class LSTMDecoder(Decoder):
 
     def forward(self, image: Tensor) -> Tensor:
         """ Predict the caption for the given image. """
+        # TODO: allow smaller batch size (to handle the last batch)
         assert image.size() == (TRAIN.BATCH_SIZE, 1, DATA.FEATURE_DIM)
 
         hidden = None
