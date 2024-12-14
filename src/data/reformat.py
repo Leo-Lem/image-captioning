@@ -1,8 +1,8 @@
 from logging import debug as DEBUG
-from os import path
+from os import path, makedirs
 from pandas import read_csv, DataFrame, Series
 
-from __param__ import PATHS, FLAGS, DATA
+from __param__ import PATHS, DATA
 
 
 def reformat():
@@ -57,5 +57,6 @@ def split(data: DataFrame, train: float = 0.6, val: float = 0.2, test: float = 0
 
 def save(data: DataFrame, name: str):
     """ Save the preprocessed dataset. """
-    data.to_csv(path.join(PATHS.OUT, f"{name}.csv"), index=False)
+    makedirs(PATHS.OUT, exist_ok=True)
+    data.to_csv(path.join(PATHS.OUT, f"data-{name}.csv"), index=False)
     DEBUG(f"Saved {name} dataset.")

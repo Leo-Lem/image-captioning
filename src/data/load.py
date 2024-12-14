@@ -10,7 +10,7 @@ def load_data(name: Literal["full", "train", "val", "test"]) -> DataFrame:
     if DATA.SAMPLE:
         name = "sample"
 
-    data = read_csv(f"{PATHS.OUT}/{name}.csv", dtype=str)
+    data = read_csv(f"{PATHS.OUT}/data-{name}.csv", dtype=str)
 
     DEBUG(f"Loaded {name} data ({data.shape})\n{data.head(3)}")
 

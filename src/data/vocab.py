@@ -4,7 +4,7 @@ from os import path
 from pandas import DataFrame, read_csv
 from spacy import blank
 
-from __param__ import PATHS, DATA, FLAGS
+from __param__ import PATHS, DATA
 
 
 def vocabularize(data: DataFrame) -> dict[str, int]:

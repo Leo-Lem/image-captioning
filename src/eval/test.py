@@ -31,7 +31,7 @@ def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> Dat
         except:
             DEBUG(f"Failed to calculate for batch: {true}, {pred}")
             pass
-    result = metrics.mean().round(4)
+    result = {"Model": model.__class__.__name__, **metrics.mean().round(4)}
     store_results(result)
     DEBUG(f"Metrics: {metrics.head(3)} -> {result}")
     return result

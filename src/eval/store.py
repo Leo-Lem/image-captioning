@@ -6,4 +6,5 @@ from __param__ import PATHS
 
 def store_results(results: DataFrame):
     """ Store the results in a CSV file. """
-    results.to_csv(path.join(PATHS.OUT, "results.csv"), index=False)
+    file = path.join(PATHS.OUT, "results.csv")
+    results.to_csv(file, index=False, mode="a", header=not path.exists(file))

@@ -30,7 +30,7 @@ def dataloader(dataset: Dataset) -> DataLoader:
                         batch_size=TRAIN.BATCH_SIZE,
                         collate_fn=collate_fn,
                         shuffle=True,
-                        drop_last=False)
+                        drop_last=True)
     DEBUG(f"Created DataLoader ({len(loader)} batches)")
     return loader
 
