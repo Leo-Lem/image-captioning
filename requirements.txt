@@ -1,8 +1,7 @@
 torch==2.5.1
 torchvision==0.20.1
-matplotlib==3.9.4
 pandas==2.2.3
 tqdm==4.66.5
 spacy==3.8.3
 nltk==3.9.1
-meteor==2.0.17
+matplotlib==3.9.4
