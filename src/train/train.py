@@ -21,6 +21,7 @@ def train(model: Module, train: DataLoader, val: DataLoader):
         return
     DEBUG(f"Starting training at epoch {start_epoch}.")
 
+    # TODO: Add early stopping.
     best_val_loss = float("inf")
     for epoch in trange(start_epoch, TRAIN.EPOCHS, desc="Training", unit="epoch"):
         train_loss = train_epoch(model, train, optimizer, criterion)
