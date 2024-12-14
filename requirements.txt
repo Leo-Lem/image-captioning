@@ -3,4 +3,4 @@ torchvision==0.20.1
 matplotlib==3.9.4
 pandas==2.2.3
 tqdm==4.66.5
-img2vec_pytorch==1.0.1
+spacy==3.8.3

@@ -1,107 +1,108 @@
-from ast import literal_eval
-from pandas import DataFrame, read_csv
-from torch import tensor, stack, Tensor
-from torch.nn.utils.rnn import pad_sequence
+from logging import debug as DEBUG
+from os import path
+from pandas import DataFrame
+from PIL import Image
+from torch import tensor, stack, Tensor, no_grad
+from torch.nn.functional import adaptive_avg_pool2d
 from torch.utils.data import DataLoader, Dataset
+from torchvision.models import efficientnet_b0
+from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
-from __param__ import PATHS, TRAIN
-
-
-def preprocess(dataset: str) -> DataLoader:
-    """
-    Load, preprocess, and return a DataLoader for the specified dataset.
-
-    Args:
-        dataset (str): The dataset to load ("train", "val", "test", "sample").
-        vocab (dict): Vocabulary mapping words to indices.
-        max_caption_length (int): Maximum length for captions (default=20).
-
-    Returns:
-        DataLoader: Preprocessed DataLoader for the dataset.
-    """
-    data: DataFrame = load(dataset)
-    vocab: DataFrame = read_csv(f"{PATHS.RES}/vocab.csv").to_dict()
-    max_caption_length: int = 20
-
-    # Parse vectors and preprocess captions
-    parsed_data: list = []
-    for _, row in data.iterrows():
-        # Parse the image vector
-        vector: Tensor = tensor(literal_eval(row["vector"])).float()
-
-        # Parse and tokenize one caption from the caption set
-        captions: set = literal_eval(row["captions"])
-        # Pick the first caption for simplicity
-        selected_caption: str = list(captions)[0]
-        tokenized_caption: list = tokenize_caption(
-            selected_caption, vocab, max_caption_length)
-
-        # Append processed data
-        parsed_data.append((vector, tokenized_caption))
-
-    # Define a Dataset class inline
-    class ProcessedDataset(Dataset):
-        def __init__(self, data: list) -> None:
-            self.data = data
-
-        def __len__(self) -> int:
-            return len(self.data)
-
-        def __getitem__(self, idx: int) -> tuple:
-            vector, tokenized_caption = self.data[idx]
-            # Exclude last token for inputs
-            inputs: Tensor = tensor(tokenized_caption[:-1])
-            # Exclude first token for targets
-            targets: Tensor = tensor(tokenized_caption[1:])
-            return vector, inputs, targets
-
-    # Create a DataLoader
-    is_train: bool = dataset == "train"
-    dataloader: DataLoader = DataLoader(
-        ProcessedDataset(parsed_data),
-        batch_size=TRAIN.BATCH_SIZE,
-        shuffle=is_train,
-        collate_fn=lambda batch: (
-            stack([item[0] for item in batch]),  # Image features
-            pad_sequence([item[1] for item in batch], batch_first=True,
-                         padding_value=vocab["<pad>"]),  # Inputs
-            pad_sequence([item[2] for item in batch], batch_first=True,
-                         padding_value=vocab["<pad>"])   # Targets
-        ),
-    )
-
-    return dataloader
+from __param__ import PATHS, TRAIN, FLAGS, DATA
 
 
-def load(dataset: str) -> DataFrame:
-    """
-    Load the specified dataset.
-
-    Args:
-        dataset (str): The dataset to load ("train", "val", "test", "sample").
-
-    Returns:
-        DataFrame: Loaded dataset.
-    """
-    assert dataset in ["train", "val", "test", "sample"], "Invalid dataset"
-    return read_csv(f"{PATHS.RES}/{dataset}.csv")
+def preprocess(data: DataFrame, vocab: DataFrame) -> DataLoader:
+    """ Preprocess the specified dataset. """
+    dataset = CustomDataset(data, vocab)
+    loader = dataloader(dataset)
+    return loader
 
 
-def tokenize_caption(caption: str, vocab: dict, max_caption_length: int) -> list[int]:
-    """
-    Tokenize a caption into indices based on the vocabulary.
+def dataloader(dataset: Dataset) -> DataLoader:
+    """ Create a DataLoader from the given dataset. """
+    def collate_fn(batch: list[tuple[Tensor, Tensor]]) -> tuple[Tensor, Tensor]:
+        images, captions = zip(*batch)
+        images, captions = stack(images), stack(captions)
+        DEBUG(f"Collated: {images.shape} | {captions.shape}")
+        return images, captions
 
-    Args:
-        caption (str): Input caption.
-        vocab (dict): Vocabulary mapping words to indices.
-        max_caption_length (int): Maximum caption length for padding/truncation.
+    loader = DataLoader(dataset,
+                        batch_size=TRAIN.BATCH_SIZE,
+                        shuffle=True,
+                        collate_fn=collate_fn)
+    DEBUG(f"Created DataLoader ({len(loader)} batches)")
+    return loader
 
-    Returns:
-        list: Tokenized caption as a list of indices.
-    """
-    tokens = caption.lower().split()
-    indices = [vocab.get(token, vocab["<unk>"]) for token in tokens]
-    # Pad or truncate to max_caption_length
-    indices = indices[:max_caption_length] + [vocab["<pad>"]]\
-        * max(0, max_caption_length - len(indices))
-    return indices
+
+class CustomDataset(Dataset):
+    """ Dataset class for image captioning. """
+
+    def __init__(self, data: DataFrame, vocab: DataFrame) -> None:
+        self.data = data
+        self.vocab = vocab
+        self.encoder = efficientnet_b0(weights="DEFAULT").eval()
+        if FLAGS.GPU:
+            self.encoder.cuda()
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
+        """" Get an image and the corresponding captions as tensors. """
+        image = self.image(self.image_name(idx))
+        image_tensor = self.image_tensor(image)
+        image = self.image_features(image_tensor).squeeze()
+        captions = stack([self.caption_tensor(caption)
+                          for caption in self.captions(idx)], dim=0)
+
+        return image, captions
+
+    def row(self, idx: int) -> DataFrame:
+        """ Get the row at the specified index. """
+        row = self.data.iloc[idx]
+        # DEBUG(f"Row {idx}: {row['image']}")
+        return row
+
+    def image_name(self, idx: int) -> str:
+        """ Get the image name at the specified index. """
+        image = self.row(idx)["image"]
+        return image
+
+    def captions(self, idx: int) -> list[str]:
+        """ Get the captions at the specified index. """
+        captions = [str(self.row(idx)[f"caption_{i}"]) for i in range(1, 6)]
+        return captions
+
+    def image_features(self, tensor: Tensor) -> Tensor:
+        """ Encode the image using EfficientNet B0. """
+        with no_grad():
+            features = self.encoder.features(tensor.unsqueeze(0))
+            features = adaptive_avg_pool2d(features, (1, 1))
+            vector = features.view(features.size(0), -1)
+        return vector
+
+    def image_tensor(self, image: Image) -> Tensor:
+        """ Get the tensor representation of the image. """
+        tensor: Tensor = Compose([
+            Resize((224, 224)),
+            ToTensor(),
+            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])(image)
+        if FLAGS.GPU:
+            return tensor.cuda()
+        return tensor
+
+    def image(self, name: str) -> Image:
+        """ Get the image with the specified name. """
+        return Image.open(path.join(PATHS.RES, "flickr8k", "Images", name)).convert("RGB")
+
+    def caption_tensor(self, caption: str) -> Tensor:
+        """ Get the padded tensor representation of the caption. """
+        caption = [self.vocab[self.vocab["word"] == word].index[0]
+                   for word in caption.split() if word in self.vocab["word"].values]
+        if len(caption) > DATA.CAPTION_LEN:
+            padded = caption[:DATA.CAPTION_LEN]
+        else:
+            padded = caption + [DATA.PADDING] * \
+                (DATA.CAPTION_LEN - len(caption))
+        return tensor(padded)

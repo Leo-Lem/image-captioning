@@ -1,6 +1,10 @@
-from src import reformat, preprocess, train
+from src import reformat, load_data, vocabularize, preprocess, Decoder, train
 
 reformat()
+vocab = vocabularize(load_data("full"))
 
-train = preprocess("train")
-val = preprocess("val")
+training = preprocess(load_data("train"), vocab)
+validation = preprocess(load_data("val"), vocab)
+
+model = Decoder.create()
+train(model, training, validation)
