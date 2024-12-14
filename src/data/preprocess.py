@@ -23,7 +23,7 @@ def dataloader(dataset: Dataset) -> DataLoader:
     def collate_fn(batch: list[tuple[Tensor, Tensor]]) -> tuple[Tensor, Tensor]:
         images, captions = zip(*batch)
         images, captions = stack(images), stack(captions)
-        DEBUG(f"Collated: {images.shape} | {captions.shape}")
+        # DEBUG(f"Collated: {images.shape} | {captions.shape}")
         return images, captions
 
     loader = DataLoader(dataset,
@@ -92,7 +92,7 @@ class CustomDataset(Dataset):
 
     def image(self, name: str) -> Image:
         """ Get the image with the specified name. """
-        return Image.open(path.join(PATHS.RES, "flickr8k", "Images", name)).convert("RGB")
+        return Image.open(path.join(PATHS.RES, "Images", name)).convert("RGB")
 
     def caption_tensor(self, caption: str) -> Tensor:
         """ Get the padded tensor representation of the caption. """

@@ -10,12 +10,23 @@ from __param__ import PATHS, DATA, FLAGS
 def vocabularize(data: DataFrame) -> dict[str, int]:
     """ Extract vocabulary from the dataset. """
     if is_created():
-        return load_vocab()
-    text = extract_text(data)
-    most_common = find_most_common(text)
-    vocab = create_vocab(most_common, DATA.VOCAB_SIZE, DATA.VOCAB_THRESHOLD)
-    save_vocab(vocab)
+        vocab = load_vocab()
+    else:
+        text = extract_text(data)
+        most_common = find_most_common(text)
+        vocab = create_vocab(most_common,
+                             DATA.VOCAB_SIZE,
+                             DATA.VOCAB_THRESHOLD)
+        save_vocab(vocab)
+    DATA.VOCAB_SIZE = len(vocab)
     return vocab
+
+
+def devocabularize(vocab: dict[str, int]) -> dict[int, str]:
+    """ Reverse the vocabulary. """
+    reverse = {index: word for word, index in vocab.items()}
+    DEBUG(f"Reversed vocabulary ({len(reverse)})\n{reverse}")
+    return reverse
 
 
 def is_created() -> bool:
@@ -56,13 +67,13 @@ def create_vocab(most_common: Counter, size: int, threshold: int) -> dict[str, i
 def save_vocab(vocab: dict[str, int]):
     """ Save the vocabulary to a file. """
     vocab = DataFrame(vocab.items(), columns=["word", "index"])
-    vocab.to_csv(PATHS.VOCAB)
+    vocab.to_csv(PATHS.VOCAB, index=False)
     DEBUG("Saved vocabulary…")
 
 
 def load_vocab() -> dict[str, int]:
     """ Load the vocabulary from a file. """
-    vocab = read_csv(PATHS.VOCAB, index_col=0)
-    vocab = vocab["index"].to_dict()
+    vocab = read_csv(PATHS.VOCAB)
+    vocab = dict(zip(vocab["word"], vocab["index"]))
     DEBUG(f"Loaded vocabulary ({len(vocab)})\n{vocab}")
     return vocab

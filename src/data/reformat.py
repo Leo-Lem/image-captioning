@@ -21,14 +21,14 @@ def reformat():
 
 def is_reformatted() -> bool:
     """ Check if the dataset has been preprocessed. """
-    return not DATA.RELOAD and all([path.exists(path.join(PATHS.RES, f"{name}.csv"))
+    return not DATA.RELOAD and all([path.exists(path.join(PATHS.OUT, f"{name}.csv"))
                                     for name in ["train", "val", "test", "sample"]])
 
 
 def load_flickr8k() -> DataFrame:
     """ Load the Flickr8k dataset. """
-    data = read_csv(path.join(PATHS.RES, "flickr8k", "captions.csv"))
-    DEBUG(f"Loaded {len(data)} captions:", data.head())
+    data = read_csv(path.join(PATHS.RES, "captions.csv"))
+    DEBUG(f"Loaded {len(data)} captions:\n{data.head()}")
     return data
 
 
@@ -57,5 +57,5 @@ def split(data: DataFrame, train: float = 0.6, val: float = 0.2, test: float = 0
 
 def save(data: DataFrame, name: str):
     """ Save the preprocessed dataset. """
-    data.to_csv(path.join(PATHS.RES, f"{name}.csv"), index=False)
+    data.to_csv(path.join(PATHS.OUT, f"{name}.csv"), index=False)
     DEBUG(f"Saved {name} dataset.")

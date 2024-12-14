@@ -10,12 +10,15 @@ parser.add_argument("approach", type=str,
 
 parser.add_argument("-p", "--path", type=str, default="",
                     help="path to load/store the trained model")
+parser.add_argument("-r", "--resources", type=str, default="res",
+                    help="path to the resources folder")
+
 parser.add_argument("-d", "--debug", action="store_true",
                     help="run in debug mode")
 parser.add_argument("--eval", action="store_true",
                     help="skip training the model")
 
-parser.add_argument("--epochs", type=int, default=10,
+parser.add_argument("--epochs", type=int, default=100,
                     help="number of epochs to train the model")
 parser.add_argument("--stop", type=int, default=3,
                     help="number of epochs without improvement to stop training")
@@ -31,10 +34,10 @@ args = parser.parse_args()
 
 
 class PATHS:
+    RES = path.join(path.dirname(__file__), args.resources)
     OUT = path.join(path.dirname(__file__), ".out")
-    RES = path.join(path.dirname(__file__), "res")
     MODEL = args.path if args.path else OUT
-    VOCAB = path.join(RES, "vocab.csv")
+    VOCAB = path.join(OUT, "vocab.csv")
 
 
 APPROACH = args.approach
