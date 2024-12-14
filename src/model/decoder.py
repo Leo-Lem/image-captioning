@@ -28,14 +28,16 @@ class Decoder(Module):
     best_model_path = path.join(PATHS.MODEL, f"{model_name}-best.pt")
     model_path = path.join(PATHS.MODEL, f"{model_name}.pt")
 
-    def load(self, optimizer: Optimizer) -> int:
+    def load(self, optimizer: Optimizer = None, best: bool = False) -> int:
         """ Load the parameters from the disk if it exists and return the current epoch. """
-        if path.exists(self.model_path):
-            DEBUG(f"Loading model from {self.model_path}…")
+        m_path = self.best_model_path if best else self.model_path
+        if path.exists(m_path):
+            DEBUG(f"Loading model from {m_path}…")
 
-            checkpoint = load(self.model_path)
+            checkpoint = load(m_path, weights_only=False)
             self.load_state_dict(checkpoint["state"])
-            optimizer.load_state_dict(checkpoint["optimizer"])
+            if optimizer:
+                optimizer.load_state_dict(checkpoint["optimizer"])
             return checkpoint["epoch"]
         else:
             return 0

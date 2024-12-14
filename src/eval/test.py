@@ -7,6 +7,7 @@ from nltk.translate.nist_score import corpus_nist
 from pandas import DataFrame
 from statistics import mean
 from torch.nn import Module
+from torch.optim import Adam
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -16,6 +17,7 @@ from .store import store_results
 
 def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> DataFrame:
     """ Test the model with the test dataset using Accuracy, BLEU, METEOR, and NIST metrics. """
+    model.load(best=True)
     model.eval()
     download("wordnet", quiet=True)
     metrics = DataFrame(columns=["Accuracy", "BLEU", "METEOR", "NIST"])
@@ -31,7 +33,9 @@ def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> Dat
         except:
             DEBUG(f"Failed to calculate for batch: {true}, {pred}")
             pass
-    result = {"Model": model.__class__.__name__, **metrics.mean().round(4)}
+    result = metrics.mean().round(4)
+    # add model name to the result
+    result = {"Model": model.__class__.__name__, **result}
     store_results(result)
     DEBUG(f"Metrics: {metrics.head(3)} -> {result}")
     return result
