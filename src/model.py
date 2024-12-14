@@ -1,7 +1,8 @@
 from logging import debug as DEBUG
 from os import path, makedirs
-from torch import Tensor, cat, zeros, load, save
-from torch.nn import Module, Embedding, Dropout, LSTM, Linear, GRU, Transformer, Parameter
+from torch import Tensor, zeros, load, save, full, long, stack, triu, ones
+from torch.nn import Module, Embedding, LSTM, Linear, GRU, Parameter, TransformerDecoderLayer
+from torch.nn import TransformerDecoder as TransformerDecoderTorch
 from torch.optim import Optimizer
 
 from __param__ import MODEL, DATA, APPROACH, PATHS, TRAIN
@@ -12,6 +13,8 @@ class Decoder(Module):
 
     def __init__(self) -> None:
         super().__init__()
+        self.image_fc = Linear(in_features=DATA.FEATURE_DIM,
+                               out_features=MODEL.EMBEDDING_DIM)
         self.embedding = Embedding(num_embeddings=DATA.VOCAB_SIZE,
                                    embedding_dim=MODEL.EMBEDDING_DIM,
                                    padding_idx=DATA.PADDING)
@@ -31,7 +34,7 @@ class Decoder(Module):
             raise ValueError(f"Unknown approach: {APPROACH}")
 
     def forward(self, image: Tensor) -> Tensor:
-        """ Forward pass for the decoder from image to caption. """
+        """ Forward pass for the decoder model that generates a sequence of tokens. """
         raise NotImplementedError("Subclasses should implement this!")
 
     # --- Model saving and loading ---
@@ -55,7 +58,7 @@ class Decoder(Module):
         """ Save the parameters to the disk. """
         DEBUG(f"Saving model to {self.model_path}…")
 
-        makedirs(self.model_path, exist_ok=True)
+        makedirs(path.dirname(self.model_path), exist_ok=True)
         save({
             "epoch": epoch+1,
             "state": self.state_dict(),
@@ -68,21 +71,38 @@ class GRUDecoder(Decoder):
 
     def __init__(self) -> None:
         super().__init__()
-        self.gru = GRU(input_size=DATA.CAPTION_LEN,
+        self.gru = GRU(input_size=MODEL.EMBEDDING_DIM,
                        hidden_size=MODEL.HIDDEN_DIM,
                        num_layers=MODEL.NUM_LAYERS,
                        dropout=MODEL.DROPOUT,
                        batch_first=True)
 
-    def forward(self, image: Tensor, caption: Tensor) -> Tensor:
-        """ Forward pass for the GRU decoder. """
-        # (batch_size, caption_len, embedding_dim)
-        embeddings = self.embedding(caption)
-        embeddings = cat((image.unsqueeze(1), embeddings), dim=1)
-        # (batch_size, seq_len+1, hidden_dim)
-        outputs, _ = self.gru(embeddings)
-        # (batch_size, seq_len+1, vocab_size)
-        outputs = self.fc(outputs)
+    def forward(self, image: Tensor) -> Tensor:
+        """ Predict the caption for the given image. """
+        assert image.size() == (TRAIN.BATCH_SIZE, 1, DATA.FEATURE_DIM)
+
+        hidden = None
+        input = full((TRAIN.BATCH_SIZE, 1), DATA.START,
+                     dtype=long, device=image.device)
+        embedding = self.image_fc(image)
+        outputs = []
+
+        for _ in range(DATA.CAPTION_LEN):
+            output, hidden = self.gru(embedding, hidden)
+            assert output.size() == (TRAIN.BATCH_SIZE, 1, MODEL.HIDDEN_DIM)
+
+            output = self.fc(output.squeeze(1))
+            assert output.size() == (TRAIN.BATCH_SIZE, DATA.VOCAB_SIZE)
+
+            outputs.append(output)
+            input = output.argmax(1).unsqueeze(1)
+            assert input.size() == (TRAIN.BATCH_SIZE, 1)
+
+            embedding = self.embedding(input)
+            assert embedding.size() == (TRAIN.BATCH_SIZE, 1, MODEL.EMBEDDING_DIM)
+
+        outputs = stack(outputs, dim=1)
+        assert outputs.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, DATA.VOCAB_SIZE)
 
         return outputs
 
@@ -98,24 +118,36 @@ class LSTMDecoder(Decoder):
                          dropout=MODEL.DROPOUT,
                          batch_first=True)
 
-    def forward(self, image: Tensor, caption: Tensor) -> Tensor:
-        """ Forward pass for the LSTM decoder. """
-        assert image.size() == (TRAIN.BATCH_SIZE, DATA.FEATURE_DIM)
-        assert caption.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN)
+    def forward(self, image: Tensor) -> Tensor:
+        """ Predict the caption for the given image. """
+        assert image.size() == (TRAIN.BATCH_SIZE, 1, DATA.FEATURE_DIM)
 
-        embedding = self.embedding(caption)
-        assert embedding.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, MODEL.EMBEDDING_DIM)
+        hidden = None
+        input = full((TRAIN.BATCH_SIZE, 1),
+                     DATA.START,
+                     dtype=long,
+                     device=image.device)
+        embedding = self.image_fc(image)
+        outputs = []
 
-        embedding = cat((image.unsqueeze(1), embedding), dim=1)
-        assert embedding.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN+1, DATA.FEATURE_DIM)
+        for _ in range(DATA.CAPTION_LEN):
+            output, hidden = self.lstm(embedding, hidden)
+            assert output.size() == (TRAIN.BATCH_SIZE, 1, MODEL.HIDDEN_DIM)
 
-        output, _ = self.lstm(embedding)
-        assert output.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN+1, MODEL.HIDDEN_DIM)
+            output = self.fc(output.squeeze(1))
+            assert output.size() == (TRAIN.BATCH_SIZE, DATA.VOCAB_SIZE)
 
-        output = self.fc(output)
-        assert output.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN+1, DATA.VOCAB_SIZE)
+            outputs.append(output)
+            input = output.argmax(1).unsqueeze(1)
+            assert input.size() == (TRAIN.BATCH_SIZE, 1)
 
-        return output
+            embedding = self.embedding(input)
+            assert embedding.size() == (TRAIN.BATCH_SIZE, 1, MODEL.EMBEDDING_DIM)
+
+        outputs = stack(outputs, dim=1)
+        assert outputs.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, DATA.VOCAB_SIZE)
+
+        return outputs
 
 
 class TransformerDecoder(Decoder):
@@ -124,32 +156,50 @@ class TransformerDecoder(Decoder):
     def __init__(self) -> None:
         super().__init__()
         max_length = 100
-        self.pos_enc = Parameter(zeros(1, max_length, DATA.CAPTION_LEN))
-        self.transformer = Transformer(d_model=DATA.CAPTION_LEN,
-                                       nhead=MODEL.NUM_HEADS,
-                                       num_encoder_layers=0,
-                                       num_decoder_layers=MODEL.NUM_LAYERS,
-                                       dropout=MODEL.DROPOU,
-                                       batch_first=True)
+        self.pos_enc = Parameter(zeros(1, max_length, MODEL.EMBEDDING_DIM))
+        self.transformer_decoder = TransformerDecoderTorch(
+            TransformerDecoderLayer(d_model=MODEL.EMBEDDING_DIM,
+                                    nhead=MODEL.ATTENTION_HEADS,
+                                    dim_feedforward=MODEL.HIDDEN_DIM,
+                                    dropout=MODEL.DROPOUT,
+                                    batch_first=True),
+            num_layers=MODEL.NUM_LAYERS)
+        self.fc = Linear(in_features=MODEL.EMBEDDING_DIM,
+                         out_features=DATA.VOCAB_SIZE)
 
-    def forward(self, image: Tensor, caption: Tensor) -> Tensor:
-        """ Forward pass for the Transformer decoder. """
-        # (batch_size, caption_Len, embedding_dim)
-        embeddings = self.embedding(caption)
-        # Add positional encoding
-        embeddings += self.pos_enc[:, :caption.size(1), :]
-        # Repeat features
-        image = image\
-            .unsqueeze(1)\
-            .repeat(1, caption.size(1), 1)
-        # Combine features and embeddings
-        embeddings = cat((image, embeddings), dim=1)
-        tgt_mask = Transformer\
-            .generate_square_subsequent_mask(embeddings.size(1))\
-            .to(embeddings.device)
-        # (seq_len, batch_size, d_model)
-        outputs = self.transformer(
-            embeddings.permute(1, 0, 2), tgt_mask=tgt_mask)
-        # (batch_size, seq_len, vocab_size)
-        outputs = self.fc(outputs.permute(1, 0, 2))
+    def forward(self, image: Tensor) -> Tensor:
+        """ Predict the caption for the given image. """
+        assert image.size() == (TRAIN.BATCH_SIZE, 1, DATA.FEATURE_DIM)
+
+        input = full((TRAIN.BATCH_SIZE, 1),
+                     DATA.START,
+                     dtype=long,
+                     device=image.device)
+        memory = self.image_fc(image)
+        memory += self.pos_enc[:, :1, :]
+        outputs = []
+
+        for t in range(DATA.CAPTION_LEN):
+            tgt = self.embedding(input) + self.pos_enc[:, :t + 1, :]
+            tgt_mask = self.mask(t + 1).to(image.device)
+
+            decoder_output = self.transformer_decoder(tgt=tgt,
+                                                      memory=memory,
+                                                      tgt_mask=tgt_mask
+                                                      )
+            output = self.fc(decoder_output[:, -1, :])
+            assert output.size() == (TRAIN.BATCH_SIZE, DATA.VOCAB_SIZE)
+
+            outputs.append(output)
+            input = output.argmax(1).unsqueeze(1)
+            assert input.size() == (TRAIN.BATCH_SIZE, 1)
+
+        outputs = stack(outputs, dim=1)
+        assert outputs.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, DATA.VOCAB_SIZE)
+
         return outputs
+
+    @staticmethod
+    def mask(size: int) -> Tensor:
+        mask = triu(ones(size, size), diagonal=1).bool()
+        return mask

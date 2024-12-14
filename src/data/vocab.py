@@ -7,7 +7,7 @@ from spacy import blank
 from __param__ import PATHS, DATA, FLAGS
 
 
-def vocabularize(data: DataFrame) -> DataFrame:
+def vocabularize(data: DataFrame) -> dict[str, int]:
     """ Extract vocabulary from the dataset. """
     if is_created():
         return load_vocab()
@@ -38,28 +38,31 @@ def find_most_common(text: list[str]) -> list[tuple[str, int]]:
     return counter.most_common()
 
 
-def create_vocab(most_common: Counter, size: int, threshold: int) -> DataFrame:
+def create_vocab(most_common: Counter, size: int, threshold: int) -> dict[str, int]:
     """ Create a vocabulary from given text. """
-    vocab_dict = {"<pad>": 0}
+    vocab = {"<pad>": DATA.PADDING,
+             "<start>": DATA.START,
+             "<end>": DATA.END,
+             "<unk>": DATA.UNKNOWN}
     for word, count in most_common:
-        if len(vocab_dict) >= size:
+        if len(vocab) >= size:
             break
         if count >= threshold:
-            vocab_dict[word] = len(vocab_dict)
-    vocab = DataFrame(vocab_dict.items(), columns=[
-                      "word", "index"]).set_index("index")
-    DEBUG(f"Created vocabulary ({vocab.shape})\n{vocab.head(3)}")
+            vocab[word] = len(vocab)
+    DEBUG(f"Created vocabulary ({len(vocab)})\n{vocab}")
     return vocab
 
 
-def save_vocab(vocab: DataFrame) -> None:
+def save_vocab(vocab: dict[str, int]):
     """ Save the vocabulary to a file. """
-    vocab.to_csv(PATHS.VOCAB, index=True)
+    vocab = DataFrame(vocab.items(), columns=["word", "index"])
+    vocab.to_csv(PATHS.VOCAB)
     DEBUG("Saved vocabulary…")
 
 
-def load_vocab() -> DataFrame:
+def load_vocab() -> dict[str, int]:
     """ Load the vocabulary from a file. """
     vocab = read_csv(PATHS.VOCAB, index_col=0)
-    DEBUG(f"Loaded vocabulary ({vocab.shape})\n{vocab.head(3)}")
+    vocab = vocab["index"].to_dict()
+    DEBUG(f"Loaded vocabulary ({len(vocab)})\n{vocab}")
     return vocab

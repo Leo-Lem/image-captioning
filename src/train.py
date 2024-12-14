@@ -21,15 +21,17 @@ def train(model: Decoder, train: DataLoader, val: DataLoader):
     start_epoch = model.load(optimizer)
     DEBUG(f"Starting training at epoch {start_epoch}.")
 
+    best_val_loss = float("inf")
     for epoch in trange(start_epoch, TRAIN.EPOCHS, desc="Training", unit="epoch"):
-        avg_train_loss = train_iteration(model, train, optimizer, criterion)
-        avg_val_loss = validate(model, val, criterion)
-        is_best = True if epoch < 1 else \
-            avg_val_loss <= min(val_loss for _, _, val_loss in val)
+        train_loss = train_iteration(model, train, optimizer, criterion)
+        val_loss = validate(model, val, criterion)
+        is_best = epoch < 1 or val_loss < best_val_loss
+        if is_best:
+            best_val_loss = val_loss
         model.save(optimizer, epoch + 1, is_best)
 
         DEBUG(
-            f"Epoch {epoch + 1}: Train Loss = {avg_train_loss:.4f}, Val Loss = {avg_val_loss:.4f}")
+            f"Epoch {epoch + 1}: Train Loss = {train_loss:.4f}, Val Loss = {val_loss:.4f}")
 
 
 def train_iteration(model: Decoder, train: DataLoader, optimizer: Adam, criterion: CrossEntropyLoss) -> float:
@@ -37,12 +39,12 @@ def train_iteration(model: Decoder, train: DataLoader, optimizer: Adam, criterio
     model.train()
     total_loss = 0.0
     for batch in tqdm(train, desc="Epoch", unit="batch"):
-        image, captions = batch
+        image, caption = batch
         optimizer.zero_grad()
 
-        outputs = model(image, captions[:, 0, :])
+        outputs = model(image)
         loss = criterion(outputs.view(-1, outputs.size(-1)),
-                         captions.view(-1))
+                         caption.view(-1))
         total_loss += loss.item()
 
         loss.backward()
@@ -57,10 +59,10 @@ def validate(model: Decoder, val: DataLoader, criterion: CrossEntropyLoss) -> fl
     val_loss = 0.0
     with no_grad():
         for batch in tqdm(val, desc="Validation", unit="batch"):
-            image, captions = batch
-            outputs = model(image, captions[:, 0, :])
+            image, caption = batch
+            outputs = model(image)
             loss = criterion(outputs.view(-1, outputs.size(-1)),
-                             captions.view(-1))
+                             caption.view(-1))
             val_loss += loss.item()
     avg_val_loss = val_loss / len(val)
     return avg_val_loss

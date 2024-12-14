@@ -19,7 +19,7 @@ parser.add_argument("--epochs", type=int, default=10,
                     help="number of epochs to train the model")
 parser.add_argument("--stop", type=int, default=3,
                     help="number of epochs without improvement to stop training")
-parser.add_argument("--batch", type=int, default=1024,
+parser.add_argument("--batch", type=int, default=1,
                     help="batch size for training")
 
 parser.add_argument("--reload", action="store_true",
@@ -31,7 +31,7 @@ args = parser.parse_args()
 
 
 class PATHS:
-    OUT = path.join(path.dirname(path.dirname(__file__)), ".out")
+    OUT = path.join(path.dirname(__file__), ".out")
     RES = path.join(path.dirname(__file__), "res")
     MODEL = args.path if args.path else OUT
     VOCAB = path.join(RES, "vocab.csv")
@@ -64,6 +64,9 @@ class DATA:
     CAPTION_LEN = 20
     NUM_CAPTIONS = 5
     PADDING = 0
+    START = 1
+    END = 2
+    UNKNOWN = 3
 
 
 class FLAGS:

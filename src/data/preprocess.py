@@ -11,7 +11,7 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 from __param__ import PATHS, TRAIN, FLAGS, DATA
 
 
-def preprocess(data: DataFrame, vocab: DataFrame) -> DataLoader:
+def preprocess(data: DataFrame, vocab: dict[str, int]) -> DataLoader:
     """ Preprocess the specified dataset. """
     dataset = CustomDataset(data, vocab)
     loader = dataloader(dataset)
@@ -37,7 +37,7 @@ def dataloader(dataset: Dataset) -> DataLoader:
 class CustomDataset(Dataset):
     """ Dataset class for image captioning. """
 
-    def __init__(self, data: DataFrame, vocab: DataFrame) -> None:
+    def __init__(self, data: DataFrame, vocab: dict[str, int]) -> None:
         self.data = data
         self.vocab = vocab
         self.encoder = efficientnet_b0(weights="DEFAULT").eval()
@@ -48,19 +48,17 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
-        """" Get an image and the corresponding captions as tensors. """
+        """" Get an image and the corresponding caption as tensors. """
         image = self.image(self.image_name(idx))
         image_tensor = self.image_tensor(image)
-        image = self.image_features(image_tensor).squeeze()
-        captions = stack([self.caption_tensor(caption)
-                          for caption in self.captions(idx)], dim=0)
+        image = self.image_features(image_tensor)
+        caption = self.caption_tensor(self.captions(idx)[0])
 
-        return image, captions
+        return image, caption
 
     def row(self, idx: int) -> DataFrame:
         """ Get the row at the specified index. """
         row = self.data.iloc[idx]
-        # DEBUG(f"Row {idx}: {row['image']}")
         return row
 
     def image_name(self, idx: int) -> str:
@@ -98,11 +96,11 @@ class CustomDataset(Dataset):
 
     def caption_tensor(self, caption: str) -> Tensor:
         """ Get the padded tensor representation of the caption. """
-        caption = [self.vocab[self.vocab["word"] == word].index[0]
-                   for word in caption.split() if word in self.vocab["word"].values]
-        if len(caption) > DATA.CAPTION_LEN:
-            padded = caption[:DATA.CAPTION_LEN]
+        caption = [DATA.START] + [self.vocab.get(word, DATA.UNKNOWN)
+                                  for word in caption.split()]
+        if len(caption) > DATA.CAPTION_LEN-1:
+            padded = caption[:DATA.CAPTION_LEN-1] + [DATA.END]
         else:
-            padded = caption + [DATA.PADDING] * \
-                (DATA.CAPTION_LEN - len(caption))
+            padded = caption + [DATA.END] + [DATA.PADDING] * \
+                (DATA.CAPTION_LEN-1 - len(caption))
         return tensor(padded)

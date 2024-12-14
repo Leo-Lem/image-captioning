@@ -14,7 +14,7 @@ def reformat():
     data = load_flickr8k()
     data = group_captions(data)
     train, val, test = split(data)
-    sample = data.sample(80)
+    sample = data.sample(8)
     [save(data, name)for data, name in zip([data, train, val, test, sample],
                                            ["full", "train", "val", "test", "sample"])]
 
@@ -28,9 +28,7 @@ def is_reformatted() -> bool:
 def load_flickr8k() -> DataFrame:
     """ Load the Flickr8k dataset. """
     data = read_csv(path.join(PATHS.RES, "flickr8k", "captions.csv"))
-
     DEBUG(f"Loaded {len(data)} captions:", data.head())
-
     return data
 
 
@@ -42,9 +40,7 @@ def group_captions(captions: DataFrame) -> DataFrame:
         .apply(Series)\
         .rename(columns=lambda i: f"caption_{i + 1}")\
         .reset_index()
-
     DEBUG(f"Grouped captions:", data.head())
-
     return data
 
 
@@ -55,16 +51,11 @@ def split(data: DataFrame, train: float = 0.6, val: float = 0.2, test: float = 0
     train_end = int(train * len(data))
     val_end = train_end + int(val * len(data))
     train, val, test = data[:train_end], data[train_end:val_end], data[val_end:]
-
-    if FLAGS.DEBUG:
-        print(
-            f"Split dataset:", train.head(), val.head(), test.head())
-
+    DEBUG(f"Split dataset:", train.head(), val.head(), test.head())
     return train, val, test
 
 
 def save(data: DataFrame, name: str):
     """ Save the preprocessed dataset. """
     data.to_csv(path.join(PATHS.RES, f"{name}.csv"), index=False)
-
     DEBUG(f"Saved {name} dataset.")
