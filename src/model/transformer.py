@@ -23,6 +23,7 @@ class TransformerDecoder(Decoder):
         self.fc = Linear(in_features=MODEL.EMBEDDING_DIM,
                          out_features=DATA.VOCAB_SIZE)
 
+    # TODO: transformer is predicting empty captions
     def forward(self, image: Tensor) -> Tensor:
         """ Predict the caption for the given image. """
         assert image.size() == (TRAIN.BATCH_SIZE, 1, DATA.FEATURE_DIM)

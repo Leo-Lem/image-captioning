@@ -25,7 +25,7 @@ def vocabularize(data: DataFrame) -> dict[str, int]:
 def devocabularize(vocab: dict[str, int]) -> dict[int, str]:
     """ Reverse the vocabulary. """
     reverse = {index: word for word, index in vocab.items()}
-    DEBUG(f"Reversed vocabulary ({len(reverse)})\n{reverse}")
+    DEBUG(f"Reversed vocabulary ({len(reverse)}")
     return reverse
 
 
@@ -60,7 +60,7 @@ def create_vocab(most_common: Counter, size: int, threshold: int) -> dict[str, i
             break
         if count >= threshold:
             vocab[word] = len(vocab)
-    DEBUG(f"Created vocabulary ({len(vocab)})\n{vocab}")
+    DEBUG(f"Created vocabulary ({len(vocab)})")
     return vocab
 
 
@@ -75,5 +75,5 @@ def load_vocab() -> dict[str, int]:
     """ Load the vocabulary from a file. """
     vocab = read_csv(PATHS.VOCAB)
     vocab = dict(zip(vocab["word"], vocab["index"]))
-    DEBUG(f"Loaded vocabulary ({len(vocab)})\n{vocab}")
+    DEBUG(f"Loaded vocabulary ({len(vocab)})")
     return vocab
