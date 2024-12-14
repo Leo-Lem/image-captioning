@@ -5,7 +5,7 @@ from torch.nn.functional import softmax
 from __param__ import DATA, TRAIN
 
 
-def unprocess(predictions: Tensor, reversed_vocab: dict[int, str]) -> list[str]:
+def unprocess(predictions: Tensor, reversed_vocab: dict[int, str]) -> list[list[str]]:
     """ Unprocess the model output (tensor embedding) back to a string. """
     assert predictions.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, DATA.VOCAB_SIZE)
 
@@ -21,9 +21,9 @@ def unprocess(predictions: Tensor, reversed_vocab: dict[int, str]) -> list[str]:
     return captions
 
 
-def stringify(caption: Tensor, reversed_vocab: dict[int, str]):
+def stringify(caption: Tensor, reversed_vocab: dict[int, str]) -> list[str]:
     """ Convert a caption to a string. """
     caption = caption.tolist()
-    caption = [reversed_vocab[token] for token in caption]
-    caption = " ".join(caption)
+    caption = [reversed_vocab[token] for token in caption
+               if token not in (DATA.START, DATA.PADDING, DATA.END, DATA.UNKNOWN)]
     return caption
