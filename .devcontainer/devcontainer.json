@@ -1,16 +1,4 @@
 {
 	"name": "Data Science",
-	"build": {
-		"dockerfile": "Dockerfile",
-		"args": {
-			"PACKAGES": "ipykernel nltk matplotlib pandas spacy wordcloud torch torchvision"
-		}
-	},
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"ms-toolsai.jupyter"
-			]
-		}
-	}
+	"image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye"
 }
