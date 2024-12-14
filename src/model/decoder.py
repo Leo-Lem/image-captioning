@@ -49,4 +49,10 @@ class Decoder(Module):
             "epoch": epoch+1,
             "state": self.state_dict(),
             "optimizer": optimizer.state_dict()
-        }, self.best_model_path if is_best else self.model_path)
+        }, self.model_path)
+        if is_best:
+            save({
+                "epoch": epoch+1,
+                "state": self.state_dict(),
+                "optimizer": optimizer.state_dict()
+            }, self.best_model_path)
