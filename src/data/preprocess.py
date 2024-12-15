@@ -46,13 +46,14 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
-        """" Get an image and the corresponding caption as tensors. """
+        """" Get an image and the corresponding captions as tensors. """
         image = self.image(self.image_name(idx))
         image_tensor = self.image_tensor(image)
         image = self.image_features(image_tensor)
-        caption = self.caption_tensor(self.captions(idx)[0])
+        captions = stack([self.caption_tensor(caption)
+                         for caption in self.captions(idx)])
 
-        return image, caption
+        return image, captions
 
     def row(self, idx: int) -> DataFrame:
         """ Get the row at the specified index. """

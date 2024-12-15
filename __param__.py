@@ -18,11 +18,11 @@ parser.add_argument("-d", "--debug", action="store_true",
 parser.add_argument("--eval", action="store_true",
                     help="skip training the model")
 
-parser.add_argument("--epochs", type=int, default=10,
+parser.add_argument("--epochs", type=int, default=500,
                     help="number of epochs to train the model")
-parser.add_argument("--patience", type=int, default=None,
+parser.add_argument("--patience", type=int, default=10,
                     help="number of epochs without improvement to stop training")
-parser.add_argument("--batch", type=int, default=1,
+parser.add_argument("--batch", type=int, default=512,
                     help="batch size for training")
 
 parser.add_argument("--reload", action="store_true",
@@ -90,7 +90,7 @@ class VOCAB:
 
 class MODEL:
     APPROACH = args.approach
-    NAME = f"{APPROACH}-model"
+    NAME = f"model-{APPROACH}"
 
     HIDDEN_DIM = 512
     EMBEDDING_DIM = 256

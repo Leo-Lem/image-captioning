@@ -13,7 +13,7 @@ class Decoder(Module):
     def __init__(self) -> None:
         super().__init__()
         self.image_fc = Linear(in_features=DATA.FEATURE_DIM,
-                               out_features=MODEL.EMBEDDING_DIM)
+                               out_features=MODEL.HIDDEN_DIM)
         self.embedding = Embedding(num_embeddings=VOCAB.SIZE,
                                    embedding_dim=MODEL.EMBEDDING_DIM,
                                    padding_idx=VOCAB.PADDING)

@@ -17,30 +17,35 @@ class GRUDecoder(Decoder):
                        batch_first=True)
 
     def forward(self, image: Tensor) -> Tensor:
-        """ Predict the caption for the given image. """
-        assert image.size() == (image.size(0), 1, DATA.FEATURE_DIM)
+        batch_size = image.size(0)
+        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
 
-        hidden = None
-        input = full((image.size(0), 1), VOCAB.START,
-                     dtype=long, device=image.device)
-        embedding = self.image_fc(image)
+        hidden = self.image_fc(image).squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1)
+        assert hidden.size() == (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
+
+        input = full((batch_size, 1), fill_value=VOCAB.START,
+                     device=image.device)
+        embedding = self.embedding(input)
+        assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
+
         outputs = []
 
         for _ in range(DATA.CAPTION_LEN):
             output, hidden = self.gru(embedding, hidden)
-            assert output.size() == (image.size(0), 1, MODEL.HIDDEN_DIM)
+            assert output.size() == (batch_size, 1, MODEL.HIDDEN_DIM)
 
             output = self.fc(output.squeeze(1))
-            assert output.size() == (image.size(0), VOCAB.SIZE)
+            assert output.size() == (batch_size, VOCAB.SIZE)
 
             outputs.append(output)
+
             input = output.argmax(1).unsqueeze(1)
-            assert input.size() == (image.size(0), 1)
+            assert input.size() == (batch_size, 1)
 
             embedding = self.embedding(input)
-            assert embedding.size() == (image.size(0), 1, MODEL.EMBEDDING_DIM)
+            assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
         outputs = stack(outputs, dim=1)
-        assert outputs.size() == (image.size(0), DATA.CAPTION_LEN, VOCAB.SIZE)
+        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, VOCAB.SIZE)
 
         return outputs

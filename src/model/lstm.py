@@ -1,7 +1,7 @@
-from torch import full, long, stack, Tensor
+from torch import full, long, stack, Tensor, zeros
 from torch.nn import LSTM
 
-from __param__ import DATA, VOCAB, MODEL, TRAIN
+from __param__ import DATA, VOCAB, MODEL
 from .decoder import Decoder
 
 
@@ -18,33 +18,38 @@ class LSTMDecoder(Decoder):
 
     def forward(self, image: Tensor) -> Tensor:
         """ Predict the caption for the given image. """
-        # TODO: allow smaller batch size (to handle the last batch) (same for the other models)
-        assert image.size() == (image.size(0), 1, DATA.FEATURE_DIM)
+        batch_size = image.size(0)
+        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
 
-        # TODO: pass image to hidden layer and intialize the lstm with "<start>" (same for the other models)
-        hidden = None
-        input = full((image.size(0), 1),
-                     VOCAB.START,
-                     dtype=long,
+        hidden = (self.image_fc(image).squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1),
+                  zeros((1, batch_size, MODEL.HIDDEN_DIM), device=image.device).repeat(MODEL.NUM_LAYERS, 1, 1))
+
+        assert hidden[0].size() == hidden[1].size() == \
+            (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
+
+        input = full((batch_size, 1), fill_value=VOCAB.START,
                      device=image.device)
-        embedding = self.image_fc(image)
+        embedding = self.embedding(input)
+        assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
+
         outputs = []
 
         for _ in range(DATA.CAPTION_LEN):
             output, hidden = self.lstm(embedding, hidden)
-            assert output.size() == (image.size(0), 1, MODEL.HIDDEN_DIM)
+            assert output.size() == (batch_size, 1, MODEL.HIDDEN_DIM)
 
             output = self.fc(output.squeeze(1))
-            assert output.size() == (image.size(0), VOCAB.SIZE)
+            assert output.size() == (batch_size, VOCAB.SIZE)
 
             outputs.append(output)
+
             input = output.argmax(1).unsqueeze(1)
-            assert input.size() == (image.size(0), 1)
+            assert input.size() == (batch_size, 1)
 
             embedding = self.embedding(input)
-            assert embedding.size() == (image.size(0), 1, MODEL.EMBEDDING_DIM)
+            assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
         outputs = stack(outputs, dim=1)
-        assert outputs.size() == (image.size(0), DATA.CAPTION_LEN, VOCAB.SIZE)
+        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, VOCAB.SIZE)
 
         return outputs

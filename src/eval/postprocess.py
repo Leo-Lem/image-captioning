@@ -1,28 +1,37 @@
 from torch import Tensor
 from torch.nn.functional import softmax
 
-from __param__ import DATA, VOCAB, TRAIN
+from __param__ import DATA, VOCAB
 
 
-def unprocess(predictions: Tensor, reversed_vocab: dict[int, str]) -> list[list[str]]:
-    """ Unprocess the model output (tensor embedding) back to a string. """
-    assert predictions.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, VOCAB.SIZE)
+def extract_from_embedding(embeddings: Tensor, reversed_vocab: dict[int, str]) -> list[str]:
+    """ Extract the most probable token from the embeddings. """
+    batch_size = embeddings.size(0)
+    assert embeddings.size() == (batch_size, DATA.CAPTION_LEN, VOCAB.SIZE)
 
-    probabilities = softmax(predictions, dim=-1)
-    assert probabilities.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, VOCAB.SIZE)
+    probabilities = softmax(embeddings, dim=-1)
+    assert probabilities.size() == (batch_size, DATA.CAPTION_LEN, VOCAB.SIZE)
 
-    decoded_captions = probabilities.argmax(dim=-1)
-    assert decoded_captions.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN)
+    tokenized = probabilities.argmax(dim=-1)
+    assert tokenized.size() == (batch_size, DATA.CAPTION_LEN)
 
     captions = [stringify(caption, reversed_vocab)
-                for caption in decoded_captions]
-
+                for caption in tokenized]
     return captions
 
 
-def stringify(caption: Tensor, reversed_vocab: dict[int, str]) -> list[str]:
-    """ Convert a caption to a string. """
-    caption = caption.tolist()
-    caption = [reversed_vocab[token] for token in caption
+def extract_from_tokenized(tokenized: Tensor, reversed_vocab: dict[int, str]) -> list[list[str]]:
+    """ Extract strings from tokenized captions. """
+    assert tokenized.size() == (tokenized.size(0), DATA.NUM_CAPTIONS, DATA.CAPTION_LEN)
+    captions = [[stringify(caption, reversed_vocab)
+                for caption in batch]
+                for batch in tokenized]
+    return captions
+
+
+def stringify(tokenized: Tensor, reversed_vocab: dict[int, str]) -> str:
+    """ Convert a tokenized caption to a string. """
+    assert tokenized.size() == (DATA.CAPTION_LEN,), tokenized.size()
+    caption = [reversed_vocab[token] for token in tokenized.tolist()
                if token not in (VOCAB.START, VOCAB.PADDING, VOCAB.END, VOCAB.UNKNOWN)]
-    return caption
+    return " ".join(caption)
