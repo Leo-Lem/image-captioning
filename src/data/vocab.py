@@ -3,76 +3,91 @@ from os.path import exists
 from pandas import DataFrame, read_csv
 from spacy import blank
 
-from __param__ import DEBUG, PATHS, DATA, VOCAB
-
-vocab_file = PATHS.OUT("vocab.csv")
+from __param__ import DEBUG, PATHS, DATA
 
 
-def vocabularize(data: DataFrame) -> dict[str, int]:
-    """ Extract vocabulary from the dataset. """
-    if is_created():
-        vocab = load_vocab()
-    else:
-        text = extract_text(data)
-        most_common = find_most_common(text)
-        vocab = create_vocab(most_common, VOCAB.SIZE, VOCAB.THRESHOLD)
-        save_vocab(vocab)
-    VOCAB.SIZE = len(vocab)
-    return vocab
+class Vocabulary:
+    """ Vocabulary for the image captioning dataset. """
 
+    DATA, FILE = PATHS.OUT("data-full.csv"), PATHS.OUT("vocab.csv")
+    SIZE, THRESHOLD = 8096, 3
+    PADDING, UNKNOWN, START, END = 0, 1, 2, 3
 
-def devocabularize(vocab: dict[str, int]) -> dict[int, str]:
-    """ Reverse the vocabulary. """
-    reverse = {index: word for word, index in vocab.items()}
-    DEBUG(f"Reversed vocabulary ({len(reverse)}")
-    return reverse
+    def __init__(self):
+        assert exists(self.DATA), f"Data file not found: {self.DATA}"
+        if self._is_created():
+            self._load()
+        else:
+            self.data = read_csv(self.DATA)
+            self._token_to_index = {"<pad>": self.PADDING,
+                                    "<unknown>": self.UNKNOWN,
+                                    "<start>": self.START,
+                                    "<end>": self.END}
+            text = self._text()
+            most_common = self._most_common(text)
+            self._assemble(most_common)
+            self._index_to_token = {index: word
+                                    for word, index in self._token_to_index.items()}
+            self._save()
 
+    def _is_created(self) -> bool:
+        """ Check if the vocabulary exists. """
+        return not DATA.RELOAD and exists(self.FILE)
 
-def is_created() -> bool:
-    """ Check if the vocabulary exists. """
-    return not DATA.RELOAD and exists(vocab_file)
+    def _save(self):
+        DataFrame(self._token_to_index.items(), columns=["word", "index"])\
+            .to_csv(self.FILE, index=False)
+        DEBUG("Saved vocabulary…")
 
+    def _load(self):
+        vocab = read_csv(self.FILE)
+        self._token_to_index = dict(zip(vocab["word"], vocab["index"]))
+        self._index_to_token = {index: word for word,
+                                index in self._token_to_index.items()}
 
-def extract_text(data: DataFrame) -> list[str]:
-    """ Extract text from the dataset. """
-    return [str(caption) for col in [f"caption_{i}" for i in range(1, 6)] for caption in data[col]]
+    def _text(self) -> list[str]:
+        """ Extract text from the dataset. """
+        return [str(caption)
+                for col in [f"caption_{i}" for i in range(1, 6)]
+                for caption in self.data[col]]
 
+    def _most_common(self, text: list[str]) -> list[tuple[str, int]]:
+        """ Find the most common words in the text. """
+        nlp, counter = blank("en"), Counter()
+        for doc in nlp.pipe(text, disable=["parser", "ner"]):
+            for token in doc:
+                if token.is_alpha:
+                    counter[token.lower_] += 1
+        return counter.most_common()
 
-def find_most_common(text: list[str]) -> list[tuple[str, int]]:
-    """ Find the most common words in the text. """
-    nlp, counter = blank("en"), Counter()
-    for doc in nlp.pipe(text, disable=["parser", "ner"]):
-        for token in doc:
-            if token.is_alpha:
-                counter[token.lower_] += 1
-    return counter.most_common()
+    def _assemble(self, most_common: Counter):
+        """ Create a vocabulary from given word counter. """
+        for word, count in most_common:
+            if len(self) >= self.SIZE:
+                break
+            if count >= self.THRESHOLD:
+                self._token_to_index[word] = len(self)
 
+    def __len__(self):
+        return len(self._token_to_index)
 
-def create_vocab(most_common: Counter, size: int, threshold: int) -> dict[str, int]:
-    """ Create a vocabulary from given text. """
-    vocab = {"<pad>": VOCAB.PADDING,
-             "<start>": VOCAB.START,
-             "<end>": VOCAB.END,
-             "<unk>": VOCAB.UNKNOWN}
-    for word, count in most_common:
-        if len(vocab) >= size:
-            break
-        if count >= threshold:
-            vocab[word] = len(vocab)
-    DEBUG(f"Created vocabulary ({len(vocab)})")
-    return vocab
+    def __getitem__(self, key: str | int) -> int | str:
+        if isinstance(key, str):
+            return self._token_to_index.get(key, self.UNKNOWN)
+        if isinstance(key, int):
+            return self._index_to_token.get(key, "<unknown>")
+        raise KeyError(f"Invalid key type: {type(key)}")
 
+    def __contains__(self, key: str | int) -> bool:
+        if isinstance(key, str):
+            return key in self._token_to_index
+        if isinstance(key, int):
+            return key in self._index_to_token
+        return False
 
-def save_vocab(vocab: dict[str, int]):
-    """ Save the vocabulary to a file. """
-    DataFrame(vocab.items(), columns=["word", "index"])\
-        .to_csv(vocab_file, index=False)
-    DEBUG("Saved vocabulary…")
+    def __iter__(self) -> iter:
+        """ Iterate over the vocabulary (token, index) """
+        return iter(self._token_to_index)
 
-
-def load_vocab() -> dict[str, int]:
-    """ Load the vocabulary from a file. """
-    vocab = read_csv(vocab_file)
-    vocab = dict(zip(vocab["word"], vocab["index"]))
-    DEBUG(f"Loaded vocabulary ({len(vocab)})")
-    return vocab
+    def __str__(self) -> str:
+        return f"Vocabulary ({len(self)} words)"

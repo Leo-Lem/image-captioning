@@ -5,7 +5,7 @@ from .lstm import LSTMDecoder
 from .transformer import TransformerDecoder
 
 
-def create_decoder() -> Decoder:
+def decoder() -> Decoder:
     """ Create a new decoder model based on the specified approach. """
     if MODEL.APPROACH == "gru":
         return GRUDecoder()

@@ -1,18 +1,19 @@
 from pandas import DataFrame
-from torch.nn import Module, CrossEntropyLoss
-from torch.utils.data import DataLoader
+from torch.nn import CrossEntropyLoss
 from torch.optim import Adam
 from tqdm import trange, tqdm
 
 from .epoch import train_epoch
 from .val import validate
-from __param__ import DEBUG, FLAGS, TRAIN, VOCAB
+from __param__ import DEBUG, FLAGS, TRAIN
+from src.data import Vocabulary, CaptionedImageDataset
+from src.model import Decoder
 
 
-def train(model: Module, train: DataLoader, val: DataLoader):
+def train(model: Decoder, train: CaptionedImageDataset, val: CaptionedImageDataset):
     """ Train the decoder model. """
     optimizer = Adam(model.parameters(), lr=TRAIN.LEARNING_RATE)
-    criterion = CrossEntropyLoss(ignore_index=VOCAB.PADDING)
+    criterion = CrossEntropyLoss(ignore_index=Vocabulary.PADDING)
     losses: DataFrame = model.load(optimizer)
     start_epoch = len(losses)
 
@@ -24,8 +25,8 @@ def train(model: Module, train: DataLoader, val: DataLoader):
     try:
         for epoch in (epochs := trange(start_epoch, TRAIN.EPOCHS, initial=start_epoch, total=TRAIN.EPOCHS, desc="Epochs", unit="epoch")):
             losses.loc[epoch, "Train"] = \
-                train_epoch(model, train, optimizer, criterion)
-            losses.loc[epoch, "Val"] = validate(model, val, criterion)
+                train_epoch(model, train.loader(), optimizer, criterion)
+            losses.loc[epoch, "Val"] = validate(model, val.loader(), criterion)
             epochs.set_postfix(train=losses["Train"][epoch],
                                val=losses["Val"][epoch])
             model.save(optimizer, losses)

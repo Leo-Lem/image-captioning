@@ -85,15 +85,6 @@ class DATA:
     NUM_CAPTIONS = 5
 
 
-class VOCAB:
-    SIZE = 8096
-    THRESHOLD = 3
-    PADDING = 0
-    START = 1
-    END = 2
-    UNKNOWN = 3
-
-
 class MODEL:
     APPROACH = args.approach
     NAME = f"model-{APPROACH}"

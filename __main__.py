@@ -1,5 +1,5 @@
-from src.data import reformat, load_data, vocabularize, devocabularize, preprocess
-from src.model import create_decoder
+from src.data import reformat, CaptionedImageDataset
+from src.model import decoder
 from src.train import train
 from src.eval import test
 from src.use import print_data, plot_metrics, plot_training, predictions, predict, display
@@ -8,26 +8,22 @@ from __param__ import FLAGS
 
 try:
     reformat()
-    vocab = vocabularize(load_data("full"))
-    reversed_vocab = devocabularize(vocab)
 
-    training = preprocess(load_data("train"), vocab, shuffle=True)
-    validation = preprocess(load_data("val"), vocab)
-    model = create_decoder()
+    training = CaptionedImageDataset("train")
+    validation = CaptionedImageDataset("val")
+
+    model = decoder()
     train(model, training, validation)
 
-    testing = preprocess(load_data("test"), vocab)
-    results = test(model, testing, reversed_vocab)
+    testing = CaptionedImageDataset("test")
+    test(model, testing)
 except KeyboardInterrupt:
     print("Stopping training and testing…")
 finally:
     if FLAGS.PREDICT:
-        prediction = predict(model, FLAGS.PREDICT)
-        display(FLAGS.PREDICT, prediction)
+        display(FLAGS.PREDICT, predict(model, FLAGS.PREDICT))
     else:
         print_data()
         plot_metrics(references={"BLEU": 0.0, "METEOR": 0.0, "NIST": 0.0})
         plot_training()
-
-        output = preprocess(load_data("test"), vocab, batch=False)
-        predictions(model, output, reversed_vocab, n=9)
+        predictions(model, testing, n=9)

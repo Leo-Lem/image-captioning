@@ -4,7 +4,8 @@ from torch import Tensor, load, save
 from torch.nn import Module, Embedding, Linear
 from torch.optim import Optimizer
 
-from __param__ import DEBUG, PATHS, DATA, VOCAB, MODEL
+from __param__ import DEBUG, PATHS, DATA, MODEL
+from src.data import Vocabulary
 
 
 class Decoder(Module):
@@ -14,11 +15,11 @@ class Decoder(Module):
         super().__init__()
         self.image_fc = Linear(in_features=DATA.FEATURE_DIM,
                                out_features=MODEL.HIDDEN_DIM)
-        self.embedding = Embedding(num_embeddings=VOCAB.SIZE,
+        self.embedding = Embedding(num_embeddings=Vocabulary.SIZE,
                                    embedding_dim=MODEL.EMBEDDING_DIM,
-                                   padding_idx=VOCAB.PADDING)
+                                   padding_idx=Vocabulary.PADDING)
         self.fc = Linear(in_features=MODEL.HIDDEN_DIM,
-                         out_features=VOCAB.SIZE)
+                         out_features=Vocabulary.SIZE)
 
     def forward(self, image: Tensor) -> Tensor:
         """ Forward pass for the decoder model that generates a sequence of tokens. """

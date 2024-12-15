@@ -2,8 +2,9 @@ from torch import full, long, stack, triu, zeros, ones, Tensor
 from torch.nn import Linear, Parameter, TransformerDecoderLayer
 from torch.nn import TransformerDecoder as TransformerDecoderTorch
 
-from __param__ import MODEL, DATA, VOCAB
+from __param__ import MODEL, DATA
 from .decoder import Decoder
+from src.data import Vocabulary
 
 
 class TransformerDecoder(Decoder):
@@ -22,13 +23,13 @@ class TransformerDecoder(Decoder):
                                     dropout=MODEL.DROPOUT,
                                     batch_first=True),
             num_layers=MODEL.NUM_LAYERS)
-        self.fc = Linear(MODEL.EMBEDDING_DIM, VOCAB.SIZE)
+        self.fc = Linear(MODEL.EMBEDDING_DIM, Vocabulary.SIZE)
 
     def forward(self, image: Tensor) -> Tensor:
         batch_size = image.size(0)
         assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
 
-        input = full((batch_size, 1), VOCAB.START, device=image.device)
+        input = full((batch_size, 1), Vocabulary.START, device=image.device)
         memory = self.image_fc(image).squeeze(1).unsqueeze(1)
         assert memory.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
@@ -41,7 +42,7 @@ class TransformerDecoder(Decoder):
             decoder_output = self.transformer_decoder(
                 tgt=tgt, memory=memory, tgt_mask=tgt_mask)
             output = self.fc(decoder_output[:, -1, :])
-            assert output.size() == (batch_size, VOCAB.SIZE)
+            assert output.size() == (batch_size, Vocabulary.SIZE)
 
             outputs.append(output)
 
@@ -49,7 +50,7 @@ class TransformerDecoder(Decoder):
             assert input.size() == (batch_size, 1)
 
         outputs = stack(outputs, dim=1)
-        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, VOCAB.SIZE)
+        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
 
         return outputs
 

@@ -1,24 +1,26 @@
+from os.path import exists
 from nltk import download
 from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate import meteor
 from nltk.translate.nist_score import corpus_nist
 from pandas import DataFrame
 from statistics import mean
-from torch.nn import Module
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 from warnings import filterwarnings
 
-from __param__ import DEBUG, FLAGS
-from .postprocess import extract_from_embedding, extract_from_tokenized
-from .store import store_results
+from __param__ import DEBUG, FLAGS, PATHS
+from .postprocess import CaptionPostprocessor
+from src.data import CaptionedImageDataset
+from src.model import Decoder
 
 
-def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> DataFrame:
+def test(model: Decoder, data: CaptionedImageDataset):
     """ Test the model with the test dataset using Accuracy, BLEU, METEOR, and NIST metrics. """
     if FLAGS.DESCRIBE:
         DEBUG("Skipping testing due to the USE flag.")
-        return DataFrame()
+        return
+
+    postprocess = CaptionPostprocessor()
 
     filterwarnings("ignore",
                    category=UserWarning,
@@ -29,12 +31,12 @@ def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> Dat
     download("wordnet", quiet=True)
     metrics = DataFrame(columns=["BLEU", "METEOR", "NIST"])
 
-    for images, captions in tqdm(data, desc="Testing", unit="batch"):
+    for images, captions in tqdm(data.loader(), desc="Testing", unit="batch"):
         true = [[caption.split(" ")
                 for caption in captions]
-                for captions in extract_from_tokenized(captions, reversed_vocab)]
+                for captions in postprocess.extract_from_indexed(captions)]
         pred = [caption.split(" ")
-                for caption in extract_from_embedding(model(images), reversed_vocab)]
+                for caption in postprocess(model(images))]
 
         def failed(metric: str, e: Exception) -> int:
             DEBUG(
@@ -61,13 +63,13 @@ def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> Dat
             "METEOR": meteor_val,
             "NIST": nist_val
         }
-
     DEBUG(f"Metrics: {metrics.head(3)}")
+
     result = DataFrame({"Model": [model.__class__.__name__],
                         "BLEU": [metrics["BLEU"].mean()],
                         "METEOR": [metrics["METEOR"].mean()],
                         "NIST": [metrics["NIST"].mean()]})\
         .round(4)\
         .set_index("Model")
-    store_results(result)
-    return result
+    file = PATHS.OUT("metrics.csv")
+    result.to_csv(file, index=True, mode="a", header=not exists(file))

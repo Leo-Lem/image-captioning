@@ -1,37 +1,47 @@
 from torch import Tensor
 from torch.nn.functional import softmax
 
-from __param__ import DATA, VOCAB
+from __param__ import DATA
+from src.data import Vocabulary
 
 
-def extract_from_embedding(embeddings: Tensor, reversed_vocab: dict[int, str]) -> list[str]:
-    """ Extract the most probable token from the embeddings. """
-    batch_size = embeddings.size(0)
-    assert embeddings.size() == (batch_size, DATA.CAPTION_LEN, VOCAB.SIZE)
+class CaptionPostprocessor:
+    """ Postprocess the captions """
 
-    probabilities = softmax(embeddings, dim=-1)
-    assert probabilities.size() == (batch_size, DATA.CAPTION_LEN, VOCAB.SIZE)
+    def __init__(self):
+        self.vocab = Vocabulary()
 
-    tokenized = probabilities.argmax(dim=-1)
-    assert tokenized.size() == (batch_size, DATA.CAPTION_LEN)
+    def __call__(self, embeddings: Tensor) -> list[str]:
+        """ Extract the most probable token from the embeddings. """
+        batch_size = embeddings.size(0)
+        assert embeddings.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
 
-    captions = [stringify(caption, reversed_vocab)
-                for caption in tokenized]
-    return captions
+        probabilities = softmax(embeddings, dim=-1)
+        assert probabilities.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
 
+        tokenized = probabilities.argmax(dim=-1)
+        assert tokenized.size() == (batch_size, DATA.CAPTION_LEN)
 
-def extract_from_tokenized(tokenized: Tensor, reversed_vocab: dict[int, str]) -> list[list[str]]:
-    """ Extract strings from tokenized captions. """
-    assert tokenized.size() == (tokenized.size(0), DATA.NUM_CAPTIONS, DATA.CAPTION_LEN)
-    captions = [[stringify(caption, reversed_vocab)
-                for caption in batch]
-                for batch in tokenized]
-    return captions
+        captions = [self.stringify(self.retokenize(caption))
+                    for caption in tokenized]
+        return captions
 
+    def extract_from_indexed(self, indexed: Tensor) -> list[list[str]]:
+        """ Extract strings from tokenized captions. """
+        assert indexed.size() == (indexed.size(0), DATA.NUM_CAPTIONS, DATA.CAPTION_LEN)
+        tokenizeds = [[self.stringify(self.retokenize(caption))
+                       for caption in batch]
+                      for batch in indexed]
+        return tokenizeds
 
-def stringify(tokenized: Tensor, reversed_vocab: dict[int, str]) -> str:
-    """ Convert a tokenized caption to a string. """
-    assert tokenized.size() == (DATA.CAPTION_LEN,), tokenized.size()
-    caption = [reversed_vocab[token] for token in tokenized.tolist()
-               if token not in (VOCAB.START, VOCAB.PADDING, VOCAB.END, VOCAB.UNKNOWN)]
-    return " ".join(caption)
+    def retokenize(self, indexed: Tensor) -> list[str]:
+        """ Convert a tokenized caption to a string. """
+        assert indexed.size() == (DATA.CAPTION_LEN,)
+        tokenized = filter(lambda x: x != "<unknown>",
+                           [self.vocab[index] for index in indexed.tolist()
+                            if index not in (Vocabulary.PADDING, Vocabulary.UNKNOWN, Vocabulary.START, Vocabulary.END)])
+        return tokenized
+
+    def stringify(self, tokenized: list[str]) -> str:
+        """ Convert a tokenized caption to a string. """
+        return " ".join(tokenized)

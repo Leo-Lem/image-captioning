@@ -1,8 +1,9 @@
 from torch import full, long, stack, Tensor, zeros
 from torch.nn import LSTM
 
-from __param__ import DATA, VOCAB, MODEL
+from __param__ import DATA, MODEL
 from .decoder import Decoder
+from src.data import Vocabulary
 
 
 class LSTMDecoder(Decoder):
@@ -27,7 +28,7 @@ class LSTMDecoder(Decoder):
         assert hidden[0].size() == hidden[1].size() == \
             (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
 
-        input = full((batch_size, 1), fill_value=VOCAB.START,
+        input = full((batch_size, 1), fill_value=Vocabulary.START,
                      device=image.device)
         embedding = self.embedding(input)
         assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
@@ -39,7 +40,7 @@ class LSTMDecoder(Decoder):
             assert output.size() == (batch_size, 1, MODEL.HIDDEN_DIM)
 
             output = self.fc(output.squeeze(1))
-            assert output.size() == (batch_size, VOCAB.SIZE)
+            assert output.size() == (batch_size, Vocabulary.SIZE)
 
             outputs.append(output)
 
@@ -50,6 +51,6 @@ class LSTMDecoder(Decoder):
             assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
         outputs = stack(outputs, dim=1)
-        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, VOCAB.SIZE)
+        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
 
         return outputs

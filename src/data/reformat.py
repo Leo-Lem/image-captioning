@@ -13,7 +13,7 @@ def reformat():
     data = load_flickr8k()
     data = group_captions(data)
     train, val, test = split(data)
-    sample = data.sample(8)
+    sample = data.sample(16)
     [save(data, name)for data, name in zip([data, train, val, test, sample],
                                            ["full", "train", "val", "test", "sample"])]
 

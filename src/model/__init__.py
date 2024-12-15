@@ -1,1 +1,2 @@
-from .create import create_decoder
+from .create import decoder
+from .decoder import Decoder
