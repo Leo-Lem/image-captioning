@@ -1,7 +1,7 @@
 from torch import full, long, stack, Tensor
 from torch.nn import GRU
 
-from __param__ import MODEL, TRAIN, DATA
+from __param__ import DATA, VOCAB, MODEL, TRAIN
 from .decoder import Decoder
 
 
@@ -21,7 +21,7 @@ class GRUDecoder(Decoder):
         assert image.size() == (TRAIN.BATCH_SIZE, 1, DATA.FEATURE_DIM)
 
         hidden = None
-        input = full((TRAIN.BATCH_SIZE, 1), DATA.START,
+        input = full((TRAIN.BATCH_SIZE, 1), VOCAB.START,
                      dtype=long, device=image.device)
         embedding = self.image_fc(image)
         outputs = []
@@ -31,7 +31,7 @@ class GRUDecoder(Decoder):
             assert output.size() == (TRAIN.BATCH_SIZE, 1, MODEL.HIDDEN_DIM)
 
             output = self.fc(output.squeeze(1))
-            assert output.size() == (TRAIN.BATCH_SIZE, DATA.VOCAB_SIZE)
+            assert output.size() == (TRAIN.BATCH_SIZE, VOCAB.SIZE)
 
             outputs.append(output)
             input = output.argmax(1).unsqueeze(1)
@@ -41,6 +41,6 @@ class GRUDecoder(Decoder):
             assert embedding.size() == (TRAIN.BATCH_SIZE, 1, MODEL.EMBEDDING_DIM)
 
         outputs = stack(outputs, dim=1)
-        assert outputs.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, DATA.VOCAB_SIZE)
+        assert outputs.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, VOCAB.SIZE)
 
         return outputs

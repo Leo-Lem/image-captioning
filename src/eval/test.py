@@ -1,4 +1,3 @@
-from logging import debug as DEBUG
 from nltk.metrics.scores import accuracy
 from nltk import download
 from nltk.translate.bleu_score import corpus_bleu
@@ -7,10 +6,10 @@ from nltk.translate.nist_score import corpus_nist
 from pandas import DataFrame
 from statistics import mean
 from torch.nn import Module
-from torch.optim import Adam
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from __param__ import DEBUG
 from .postprocess import unprocess, stringify
 from .store import store_results
 

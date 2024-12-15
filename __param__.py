@@ -1,6 +1,6 @@
-from logging import basicConfig
+from logging import basicConfig, debug
 from argparse import ArgumentParser
-from os import path
+from os import path, makedirs
 from torch import cuda
 
 parser = ArgumentParser(
@@ -20,7 +20,7 @@ parser.add_argument("--eval", action="store_true",
 
 parser.add_argument("--epochs", type=int, default=100,
                     help="number of epochs to train the model")
-parser.add_argument("--stop", type=int, default=3,
+parser.add_argument("--stop", type=int, default=0,
                     help="number of epochs without improvement to stop training")
 parser.add_argument("--batch", type=int, default=1,
                     help="batch size for training")
@@ -33,17 +33,65 @@ parser.add_argument("--sample", action="store_true",
 args = parser.parse_args()
 
 
+class FLAGS:
+    EVAL = args.eval
+    GPU = cuda.is_available()
+
+    @staticmethod
+    def DEBUG(message: str) -> bool:
+        if args.debug:
+            basicConfig(level="DEBUG")
+            debug(message)
+        return args.debug
+
+
+def DEBUG(message: str) -> bool:
+    FLAGS.DEBUG(message)
+
+
 class PATHS:
-    RES = path.join(path.dirname(__file__), args.resources)
-    OUT = path.join(path.dirname(__file__), ".out")
-    MODEL = args.path if args.path else OUT
-    VOCAB = path.join(OUT, "vocab.csv")
+    @staticmethod
+    def RESOURCES(*files: str) -> str:
+        res = path.join(path.dirname(__file__), args.resources, *files)
+        assert path.exists(res), f"Resource {res} not found!"
+        return res
+
+    @staticmethod
+    def OUT(*files: str) -> str:
+        out = path.join(path.dirname(__file__), ".out")
+        makedirs(out, exist_ok=True)
+        return path.join(out, *files)
+
+    @staticmethod
+    def MODEL(*files: str) -> str:
+        if args.path:
+            makedirs(args.path, exist_ok=True)
+            return path.join(args.path, *files)
+        else:
+            return PATHS.OUT(*files)
 
 
-APPROACH = args.approach
+class DATA:
+    SAMPLE = args.sample
+    RELOAD = args.reload
+    FEATURE_DIM = 1280
+    CAPTION_LEN = 20
+    NUM_CAPTIONS = 5
+
+
+class VOCAB:
+    SIZE = 8096
+    THRESHOLD = 3
+    PADDING = 0
+    START = 1
+    END = 2
+    UNKNOWN = 3
 
 
 class MODEL:
+    APPROACH = args.approach
+    NAME = f"{APPROACH}-model"
+
     HIDDEN_DIM = 512
     EMBEDDING_DIM = 256
     NUM_LAYERS = 2
@@ -56,27 +104,3 @@ class TRAIN:
     STOP_EARLY_AFTER = args.stop
     BATCH_SIZE = args.batch
     LEARNING_RATE = 1e-3
-
-
-class DATA:
-    SAMPLE = args.sample
-    RELOAD = args.reload
-    VOCAB_SIZE = 8096
-    VOCAB_THRESHOLD = 3
-    FEATURE_DIM = 1280
-    CAPTION_LEN = 20
-    NUM_CAPTIONS = 5
-    PADDING = 0
-    START = 1
-    END = 2
-    UNKNOWN = 3
-
-
-class FLAGS:
-    DEBUG = args.debug
-    EVAL = args.eval
-    GPU = cuda.is_available()
-
-
-if args.debug:
-    basicConfig(level="DEBUG")

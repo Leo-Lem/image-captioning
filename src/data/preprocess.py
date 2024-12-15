@@ -1,5 +1,3 @@
-from logging import debug as DEBUG
-from os import path
 from pandas import DataFrame
 from PIL import Image
 from torch import tensor, stack, Tensor, no_grad
@@ -8,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.models import efficientnet_b0
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
-from __param__ import PATHS, TRAIN, FLAGS, DATA
+from __param__ import DEBUG, PATHS, FLAGS, DATA, VOCAB, TRAIN
 
 
 def preprocess(data: DataFrame, vocab: dict[str, int]) -> DataLoader:
@@ -93,15 +91,15 @@ class CustomDataset(Dataset):
 
     def image(self, name: str) -> Image:
         """ Get the image with the specified name. """
-        return Image.open(path.join(PATHS.RES, "Images", name)).convert("RGB")
+        return Image.open(PATHS.RESOURCES("Images", name)).convert("RGB")
 
     def caption_tensor(self, caption: str) -> Tensor:
         """ Get the padded tensor representation of the caption. """
-        caption = [DATA.START] + [self.vocab.get(word, DATA.UNKNOWN)
-                                  for word in caption.split()]
+        caption = [VOCAB.START] + [self.vocab.get(word, VOCAB.UNKNOWN)
+                                   for word in caption.split()]
         if len(caption) > DATA.CAPTION_LEN-1:
-            padded = caption[:DATA.CAPTION_LEN-1] + [DATA.END]
+            padded = caption[:DATA.CAPTION_LEN-1] + [VOCAB.END]
         else:
-            padded = caption + [DATA.END] + [DATA.PADDING] * \
+            padded = caption + [VOCAB.END] + [VOCAB.PADDING] * \
                 (DATA.CAPTION_LEN-1 - len(caption))
         return tensor(padded)

@@ -1,7 +1,7 @@
 from torch import full, long, stack, Tensor
 from torch.nn import LSTM
 
-from __param__ import MODEL, TRAIN, DATA
+from __param__ import DATA, VOCAB, MODEL, TRAIN
 from .decoder import Decoder
 
 
@@ -18,12 +18,13 @@ class LSTMDecoder(Decoder):
 
     def forward(self, image: Tensor) -> Tensor:
         """ Predict the caption for the given image. """
-        # TODO: allow smaller batch size (to handle the last batch)
+        # TODO: allow smaller batch size (to handle the last batch) (same for the other models)
         assert image.size() == (TRAIN.BATCH_SIZE, 1, DATA.FEATURE_DIM)
 
+        # TODO: pass image to hidden layer and intialize the lstm with "<start>" (same for the other models)
         hidden = None
         input = full((TRAIN.BATCH_SIZE, 1),
-                     DATA.START,
+                     VOCAB.START,
                      dtype=long,
                      device=image.device)
         embedding = self.image_fc(image)
@@ -34,7 +35,7 @@ class LSTMDecoder(Decoder):
             assert output.size() == (TRAIN.BATCH_SIZE, 1, MODEL.HIDDEN_DIM)
 
             output = self.fc(output.squeeze(1))
-            assert output.size() == (TRAIN.BATCH_SIZE, DATA.VOCAB_SIZE)
+            assert output.size() == (TRAIN.BATCH_SIZE, VOCAB.SIZE)
 
             outputs.append(output)
             input = output.argmax(1).unsqueeze(1)
@@ -44,6 +45,6 @@ class LSTMDecoder(Decoder):
             assert embedding.size() == (TRAIN.BATCH_SIZE, 1, MODEL.EMBEDDING_DIM)
 
         outputs = stack(outputs, dim=1)
-        assert outputs.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, DATA.VOCAB_SIZE)
+        assert outputs.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, VOCAB.SIZE)
 
         return outputs
