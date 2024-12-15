@@ -35,40 +35,47 @@ def dataloader(dataset: Dataset, shuffle: bool, batch: bool) -> DataLoader:
 class CaptionedImagesDataset(Dataset):
     """ Dataset class for image captioning. """
 
-    def __init__(self, data: DataFrame, vocab: dict[str, int]) -> None:
+    def __init__(self, data: DataFrame, vocab: dict[str, int]):
         self.data = data
-        self.vocab = vocab
-        self.encoder = efficientnet_b0(weights="DEFAULT").eval()
-        if FLAGS.GPU:
-            self.encoder.cuda()
+        self.preprocessor = Preprocessor(vocab)
 
     def __len__(self) -> int:
         return len(self.data)
 
     def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
         """" Get an image and the corresponding captions as tensors. """
-        image = self.image(self.image_name(idx))
-        image_tensor = self.image_tensor(image)
-        image = self.image_features(image_tensor)
-        captions = stack([self.caption_tensor(caption)
+        image = self.preprocessor.preprocess(self.image_name(idx))
+        captions = stack([self.preprocessor.caption_tensor(caption)
                          for caption in self.captions(idx)])
-
         return image, captions
-
-    def row(self, idx: int) -> DataFrame:
-        """ Get the row at the specified index. """
-        row = self.data.iloc[idx]
-        return row
 
     def image_name(self, idx: int) -> str:
         """ Get the image name at the specified index. """
-        image = self.row(idx)["image"]
+        image = self.data.iloc[idx]["image"]
         return image
 
     def captions(self, idx: int) -> list[str]:
         """ Get the captions at the specified index. """
-        captions = [str(self.row(idx)[f"caption_{i}"]) for i in range(1, 6)]
+        captions = [str(self.data.iloc[idx][f"caption_{i}"])
+                    for i in range(1, 6)]
         return captions
+
+
+class Preprocessor:
+    """ Preprocesses images and captions. """
+
+    def __init__(self, vocab: dict[str, int]):
+        self.vocab = vocab
+        self.encoder = efficientnet_b0(weights="DEFAULT").eval()
+        if FLAGS.GPU:
+            self.encoder.cuda()
+
+    def preprocess(self, image: str) -> Tensor:
+        """ Preprocess the image and return the features. """
+        image = self.image(image)
+        tensor = self.image_tensor(image)
+        features = self.image_features(tensor)
+        return features
 
     def image_features(self, tensor: Tensor) -> Tensor:
         """ Encode the image using EfficientNet B0. """

@@ -17,8 +17,10 @@ parser.add_argument("-d", "--debug", action="store_true",
                     help="run in debug mode")
 parser.add_argument("--eval", action="store_true",
                     help="skip training the model")
-parser.add_argument("--use", action="store_true",
-                    help="no training or testing, only use the model")
+parser.add_argument("--describe", action="store_true",
+                    help="no training or testing, only describe the model")
+parser.add_argument("--predict", type=str, default=None,
+                    help="predict the caption for a given image path")
 
 parser.add_argument("--epochs", type=int, default=500,
                     help="number of epochs to train the model")
@@ -36,12 +38,13 @@ args = parser.parse_args()
 
 
 class FLAGS:
-    EVAL = args.eval or args.use
-    USE = args.use
+    EVAL = args.eval or args.describe or args.predict
+    DESCRIBE = args.describe or args.predict
+    PREDICT = args.predict
     GPU = cuda.is_available()
 
     @staticmethod
-    def DEBUG(message: str) -> bool:
+    def DEBUG(message: str = "") -> bool:
         if args.debug:
             basicConfig(level="DEBUG")
             debug(message)
@@ -78,7 +81,7 @@ class DATA:
     SAMPLE = args.sample
     RELOAD = args.reload
     FEATURE_DIM = 1280
-    CAPTION_LEN = 20
+    CAPTION_LEN = 15
     NUM_CAPTIONS = 5
 
 

@@ -2,7 +2,9 @@ from src.data import reformat, load_data, vocabularize, devocabularize, preproce
 from src.model import create_decoder
 from src.train import train
 from src.eval import test
-from src.use import print_data, plot_metrics, plot_training, predictions
+from src.use import print_data, plot_metrics, plot_training, predictions, predict, display
+
+from __param__ import FLAGS
 
 try:
     reformat()
@@ -19,9 +21,13 @@ try:
 except KeyboardInterrupt:
     print("Stopping training and testing…")
 finally:
-    print_data()
-    plot_metrics(references={"BLEU": 0.0, "METEOR": 0.0, "NIST": 0.0})
-    plot_training()
+    if FLAGS.PREDICT:
+        prediction = predict(model, FLAGS.PREDICT)
+        display(FLAGS.PREDICT, prediction)
+    else:
+        print_data()
+        plot_metrics(references={"BLEU": 0.0, "METEOR": 0.0, "NIST": 0.0})
+        plot_training()
 
-    output = preprocess(load_data("test"), vocab, batch=False)
-    predictions(model, output, reversed_vocab, n=9)
+        output = preprocess(load_data("test"), vocab, batch=False)
+        predictions(model, output, reversed_vocab, n=9)

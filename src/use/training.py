@@ -1,5 +1,6 @@
 from matplotlib import pyplot
 from pandas import read_csv
+from tqdm import tqdm
 
 from __param__ import PATHS, MODEL
 
@@ -16,4 +17,6 @@ def plot_training():
     pyplot.legend()
     pyplot.title("Training")
     pyplot.savefig(PATHS.OUT(f"training-{MODEL.NAME}.png"))
+    tqdm.write(
+        f"Training graph saved to '{PATHS.OUT(f'training-{MODEL.NAME}.png')}'.")
     pyplot.close()

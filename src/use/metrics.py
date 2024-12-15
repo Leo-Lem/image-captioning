@@ -1,6 +1,7 @@
 from matplotlib import pyplot
 from pandas import read_csv
 from numpy import arange
+from tqdm import tqdm
 
 from __param__ import PATHS
 
@@ -30,4 +31,5 @@ def plot_metrics(references: dict[str, float] = {"BLEU": 0.0, "METEOR": 0.0, "NI
     pyplot.legend()
     pyplot.title("Results")
     pyplot.savefig(PATHS.OUT("metrics.png"))
+    tqdm.write(f"Metrics saved to '{PATHS.OUT('metrics.png')}'.")
     pyplot.close()

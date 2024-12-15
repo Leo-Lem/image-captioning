@@ -16,7 +16,7 @@ from .store import store_results
 
 def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> DataFrame:
     """ Test the model with the test dataset using Accuracy, BLEU, METEOR, and NIST metrics. """
-    if FLAGS.USE:
+    if FLAGS.DESCRIBE:
         DEBUG("Skipping testing due to the USE flag.")
         return DataFrame()
 
