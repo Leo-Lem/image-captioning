@@ -86,9 +86,7 @@ class DATA:
 
 
 class MODEL:
-    APPROACH = args.approach
-    NAME = f"model-{APPROACH}"
-
+    NAME = f"model-{args.approach}"
     HIDDEN_DIM = 512
     EMBEDDING_DIM = 256
     NUM_LAYERS = 2
@@ -100,4 +98,4 @@ class TRAIN:
     EPOCHS = args.epochs
     PATIENCE = args.patience
     BATCH_SIZE = args.batch
-    LEARNING_RATE = 1e-3
+    LEARNING_RATE = 4e-4

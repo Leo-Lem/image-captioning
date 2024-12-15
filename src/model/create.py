@@ -7,11 +7,11 @@ from .transformer import TransformerDecoder
 
 def decoder() -> Decoder:
     """ Create a new decoder model based on the specified approach. """
-    if MODEL.APPROACH == "gru":
+    if "gru" in MODEL.NAME:
         return GRUDecoder()
-    elif MODEL.APPROACH == "lstm":
+    elif "lstm" in MODEL.NAME:
         return LSTMDecoder()
-    elif MODEL.APPROACH == "transformer":
+    elif "transformer" in MODEL.NAME:
         return TransformerDecoder()
     else:
-        raise ValueError(f"Unknown approach: {MODEL.APPROACH}")
+        raise ValueError(f"Unknown model: {MODEL.NAME}")
