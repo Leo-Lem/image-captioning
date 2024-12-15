@@ -8,6 +8,7 @@ from statistics import mean
 from torch.nn import Module
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from warnings import filterwarnings
 
 from __param__ import DEBUG
 from .postprocess import unprocess, stringify
@@ -16,6 +17,10 @@ from .store import store_results
 
 def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> DataFrame:
     """ Test the model with the test dataset using Accuracy, BLEU, METEOR, and NIST metrics. """
+    filterwarnings("ignore",
+                   category=UserWarning,
+                   module="nltk.translate.bleu_score")
+
     model.load(best=True)
     model.eval()
     download("wordnet", quiet=True)
@@ -32,8 +37,15 @@ def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> Dat
         except:
             DEBUG(f"Failed to calculate for batch: {true}, {pred}")
             pass
-    result = metrics.mean().round(4)
-    result["Model"] = model.__class__.__name__
+    result = DataFrame({
+        "Model": [model.__class__.__name__],
+        "Accuracy": [metrics["Accuracy"].mean()],
+        "BLEU": [metrics["BLEU"].mean()],
+        "METEOR": [metrics["METEOR"].mean()],
+        "NIST": [metrics["NIST"].mean()]
+    })\
+        .round(4)\
+        .set_index("Model")
     store_results(result)
     DEBUG(f"Metrics: {metrics.head(3)} -> {result}")
     return result

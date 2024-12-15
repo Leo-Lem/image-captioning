@@ -8,7 +8,7 @@ def train_epoch(model: Module, train: DataLoader, optimizer: Adam, criterion: Cr
     """ Train the model for one epoch. """
     model.train()
     total_loss = 0.0
-    for batch in tqdm(train, desc="Epoch", unit="batch"):
+    for batch in (batches := tqdm(train, desc="Epoch", unit="batch")):
         image, caption = batch
         optimizer.zero_grad()
 
@@ -19,5 +19,5 @@ def train_epoch(model: Module, train: DataLoader, optimizer: Adam, criterion: Cr
 
         loss.backward()
         optimizer.step()
-    avg_train_loss = total_loss / len(train)
-    return avg_train_loss
+        batches.set_postfix(loss=loss.item())
+    return total_loss / len(train)

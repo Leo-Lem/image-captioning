@@ -2,7 +2,7 @@ from torch import full, long, stack, triu, zeros, ones, Tensor
 from torch.nn import Linear, Parameter, TransformerDecoderLayer
 from torch.nn import TransformerDecoder as TransformerDecoderTorch
 
-from __param__ import MODEL, DATA, TRAIN
+from __param__ import MODEL, DATA, VOCAB
 from .decoder import Decoder
 
 
@@ -21,14 +21,14 @@ class TransformerDecoder(Decoder):
                                     batch_first=True),
             num_layers=MODEL.NUM_LAYERS)
         self.fc = Linear(in_features=MODEL.EMBEDDING_DIM,
-                         out_features=DATA.VOCAB_SIZE)
+                         out_features=VOCAB.SIZE)
 
     # TODO: transformer is predicting empty captions
     def forward(self, image: Tensor) -> Tensor:
         """ Predict the caption for the given image. """
-        assert image.size() == (TRAIN.BATCH_SIZE, 1, DATA.FEATURE_DIM)
+        assert image.size() == (image.size(0), 1, DATA.FEATURE_DIM)
 
-        input = full((TRAIN.BATCH_SIZE, 1),
+        input = full((image.size(0), 1),
                      DATA.START,
                      dtype=long,
                      device=image.device)
@@ -45,14 +45,14 @@ class TransformerDecoder(Decoder):
                                                       tgt_mask=tgt_mask
                                                       )
             output = self.fc(decoder_output[:, -1, :])
-            assert output.size() == (TRAIN.BATCH_SIZE, DATA.VOCAB_SIZE)
+            assert output.size() == (image.size(0), VOCAB.SIZE)
 
             outputs.append(output)
             input = output.argmax(1).unsqueeze(1)
-            assert input.size() == (TRAIN.BATCH_SIZE, 1)
+            assert input.size() == (image.size(0), 1)
 
         outputs = stack(outputs, dim=1)
-        assert outputs.size() == (TRAIN.BATCH_SIZE, DATA.CAPTION_LEN, DATA.VOCAB_SIZE)
+        assert outputs.size() == (image.size(0), DATA.CAPTION_LEN, VOCAB.SIZE)
 
         return outputs
 

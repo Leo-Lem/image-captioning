@@ -18,9 +18,9 @@ parser.add_argument("-d", "--debug", action="store_true",
 parser.add_argument("--eval", action="store_true",
                     help="skip training the model")
 
-parser.add_argument("--epochs", type=int, default=100,
+parser.add_argument("--epochs", type=int, default=10,
                     help="number of epochs to train the model")
-parser.add_argument("--stop", type=int, default=0,
+parser.add_argument("--patience", type=int, default=None,
                     help="number of epochs without improvement to stop training")
 parser.add_argument("--batch", type=int, default=1,
                     help="batch size for training")
@@ -101,6 +101,6 @@ class MODEL:
 
 class TRAIN:
     EPOCHS = args.epochs
-    STOP_EARLY_AFTER = args.stop
+    PATIENCE = args.patience
     BATCH_SIZE = args.batch
     LEARNING_RATE = 1e-3
