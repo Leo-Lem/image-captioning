@@ -24,11 +24,12 @@ def train(model: Decoder, train: CaptionedImageDataset, val: CaptionedImageDatas
 
     try:
         for epoch in (epochs := trange(start_epoch, TRAIN.EPOCHS, initial=start_epoch, total=TRAIN.EPOCHS, desc="Epochs", unit="epoch")):
-            losses.loc[epoch, "Train"] = \
+            losses.loc[epoch, "Training"] = \
                 train_epoch(model, train.loader(), optimizer, criterion)
-            losses.loc[epoch, "Val"] = validate(model, val.loader(), criterion)
-            epochs.set_postfix(train=losses["Train"][epoch],
-                               val=losses["Val"][epoch])
+            losses.loc[epoch, "Validation"] = \
+                validate(model, val.loader(), criterion)
+            epochs.set_postfix(train=losses["Training"][epoch],
+                               val=losses["Validation"][epoch])
             model.save(optimizer, losses)
 
             if TRAIN.PATIENCE and epochs_without_improvement(losses):
@@ -38,7 +39,7 @@ def train(model: Decoder, train: CaptionedImageDataset, val: CaptionedImageDatas
         DEBUG("Training interrupted.")
     finally:
         tqdm.write(
-            f"Trained for {len(losses)} epochs. Best validation loss: {round(losses['Val'].min(), 5)} at epoch {losses['Val'].idxmin()}.")
+            f"Trained for {len(losses)} epochs. Best validation loss: {round(losses['Validation'].min(), 5)} at epoch {losses['Validation'].idxmin()}.")
 
 
 def epochs_without_improvement(losses: DataFrame) -> bool:
@@ -46,7 +47,7 @@ def epochs_without_improvement(losses: DataFrame) -> bool:
     if len(losses) <= TRAIN.PATIENCE:
         return False
 
-    best_before = losses["Val"][:-TRAIN.PATIENCE].min()
-    last_patience = losses["Val"].iloc[-TRAIN.PATIENCE:]
+    best_before = losses["Validation"][:-TRAIN.PATIENCE].min()
+    last_patience = losses["Validation"].iloc[-TRAIN.PATIENCE:]
 
     return all(last_patience >= best_before)

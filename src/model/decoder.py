@@ -41,7 +41,7 @@ class Decoder(Module):
                 optimizer.load_state_dict(checkpoint["optimizer"])
             return checkpoint["losses"]
         else:
-            return DataFrame(columns=["Train", "Val"])
+            return DataFrame(columns=["Training", "Validation"])
 
     def save(self, optimizer: Optimizer, losses: DataFrame) -> None:
         """ Save the parameters to the disk. Train and val losses are per epoch (index). """
@@ -54,7 +54,7 @@ class Decoder(Module):
             "optimizer": optimizer.state_dict()
         }, self.model_path)
 
-        if not exists(self.best_model_path) or losses["Val"].iloc[-1] < losses["Val"].min():
+        if not exists(self.best_model_path) or losses["Validation"].iloc[-1] < losses["Validation"].min():
             save({
                 "losses": losses,
                 "state": self.state_dict(),
