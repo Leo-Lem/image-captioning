@@ -9,14 +9,14 @@ from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 from __param__ import DEBUG, PATHS, FLAGS, DATA, VOCAB, TRAIN
 
 
-def preprocess(data: DataFrame, vocab: dict[str, int], shuffle: bool = False) -> DataLoader:
+def preprocess(data: DataFrame, vocab: dict[str, int], shuffle: bool = False, batch: bool = True) -> DataLoader:
     """ Preprocess the specified dataset. """
-    dataset = CustomDataset(data, vocab)
-    loader = dataloader(dataset, shuffle)
+    dataset = CaptionedImagesDataset(data, vocab)
+    loader = dataloader(dataset, shuffle, batch)
     return loader
 
 
-def dataloader(dataset: Dataset, shuffle: bool) -> DataLoader:
+def dataloader(dataset: Dataset, shuffle: bool, batch: bool) -> DataLoader:
     """ Create a DataLoader from the given dataset. """
     def collate_fn(batch: list[tuple[Tensor, Tensor]]) -> tuple[Tensor, Tensor]:
         images, captions = zip(*batch)
@@ -25,14 +25,14 @@ def dataloader(dataset: Dataset, shuffle: bool) -> DataLoader:
         return images, captions
 
     loader = DataLoader(dataset,
-                        batch_size=TRAIN.BATCH_SIZE,
+                        batch_size=TRAIN.BATCH_SIZE if batch else 1,
                         collate_fn=collate_fn,
                         shuffle=shuffle)
     DEBUG(f"Created DataLoader ({len(loader)} batches)")
     return loader
 
 
-class CustomDataset(Dataset):
+class CaptionedImagesDataset(Dataset):
     """ Dataset class for image captioning. """
 
     def __init__(self, data: DataFrame, vocab: dict[str, int]) -> None:

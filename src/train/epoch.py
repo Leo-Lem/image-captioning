@@ -11,7 +11,7 @@ def train_epoch(model: Module, train: DataLoader, optimizer: Adam, criterion: Cr
     model.train()
     total_loss = 0.0
 
-    for batch in (batches := tqdm(train, desc="Epoch", unit="batch")):
+    for batch in (batches := tqdm(train, desc="Training", unit="batch")):
         image, captions = batch
         optimizer.zero_grad()
 

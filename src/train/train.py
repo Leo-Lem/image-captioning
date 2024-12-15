@@ -22,7 +22,7 @@ def train(model: Module, train: DataLoader, val: DataLoader):
     DEBUG(f"Starting training at epoch {start_epoch}.")
 
     try:
-        for epoch in (epochs := trange(start_epoch, TRAIN.EPOCHS, initial=start_epoch, total=TRAIN.EPOCHS, desc="Training", unit="epoch")):
+        for epoch in (epochs := trange(start_epoch, TRAIN.EPOCHS, initial=start_epoch, total=TRAIN.EPOCHS, desc="Epochs", unit="epoch")):
             losses.loc[epoch, "Train"] = \
                 train_epoch(model, train, optimizer, criterion)
             losses.loc[epoch, "Val"] = validate(model, val, criterion)
@@ -35,9 +35,9 @@ def train(model: Module, train: DataLoader, val: DataLoader):
                 break
     except KeyboardInterrupt:
         DEBUG("Training interrupted.")
-        pass
-    tqdm.write(
-        f"Trained for {len(losses)} epochs. Best validation loss: {round(losses['Val'].min(), 5)} at epoch {losses['Val'].idxmin()}.")
+    finally:
+        tqdm.write(
+            f"Trained for {len(losses)} epochs. Best validation loss: {round(losses['Val'].min(), 5)} at epoch {losses['Val'].idxmin()}.")
 
 
 def epochs_without_improvement(losses: DataFrame) -> bool:

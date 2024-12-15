@@ -9,13 +9,17 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from warnings import filterwarnings
 
-from __param__ import DEBUG
+from __param__ import DEBUG, FLAGS
 from .postprocess import extract_from_embedding, extract_from_tokenized
 from .store import store_results
 
 
 def test(model: Module, data: DataLoader, reversed_vocab: dict[int, str]) -> DataFrame:
     """ Test the model with the test dataset using Accuracy, BLEU, METEOR, and NIST metrics. """
+    if FLAGS.USE:
+        DEBUG("Skipping testing due to the USE flag.")
+        return DataFrame()
+
     filterwarnings("ignore",
                    category=UserWarning,
                    module="nltk.translate.bleu_score")

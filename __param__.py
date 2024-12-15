@@ -17,6 +17,8 @@ parser.add_argument("-d", "--debug", action="store_true",
                     help="run in debug mode")
 parser.add_argument("--eval", action="store_true",
                     help="skip training the model")
+parser.add_argument("--use", action="store_true",
+                    help="no training or testing, only use the model")
 
 parser.add_argument("--epochs", type=int, default=500,
                     help="number of epochs to train the model")
@@ -34,7 +36,8 @@ args = parser.parse_args()
 
 
 class FLAGS:
-    EVAL = args.eval
+    EVAL = args.eval or args.use
+    USE = args.use
     GPU = cuda.is_available()
 
     @staticmethod
