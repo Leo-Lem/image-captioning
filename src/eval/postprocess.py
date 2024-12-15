@@ -1,7 +1,7 @@
 from torch import Tensor
 from torch.nn.functional import softmax
 
-from __param__ import DATA
+from __param__ import DATA, DEBUG
 from src.data import Vocabulary
 
 
@@ -16,14 +16,11 @@ class CaptionPostprocessor:
         batch_size = embeddings.size(0)
         assert embeddings.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
 
-        probabilities = softmax(embeddings, dim=-1)
-        assert probabilities.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
+        indexed = embeddings.argmax(dim=-1)
+        assert indexed.size() == (batch_size, DATA.CAPTION_LEN)
 
-        tokenized = probabilities.argmax(dim=-1)
-        assert tokenized.size() == (batch_size, DATA.CAPTION_LEN)
-
-        captions = [self.stringify(self.retokenize(caption))
-                    for caption in tokenized]
+        captions = [self.stringify(self.retokenize(indices))
+                    for indices in indexed]
         return captions
 
     def extract_from_indexed(self, indexed: Tensor) -> list[list[str]]:

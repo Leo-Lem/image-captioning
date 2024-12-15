@@ -98,4 +98,4 @@ class TRAIN:
     EPOCHS = args.epochs
     PATIENCE = args.patience
     BATCH_SIZE = args.batch
-    LEARNING_RATE = 4e-4
+    LEARNING_RATE = 1e-3

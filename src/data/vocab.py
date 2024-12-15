@@ -1,6 +1,6 @@
 from collections import Counter
 from os.path import exists
-from pandas import DataFrame, read_csv
+from pandas import DataFrame, read_csv, notna
 from spacy import blank
 
 from __param__ import DEBUG, PATHS, DATA
@@ -10,7 +10,7 @@ class Vocabulary:
     """ Vocabulary for the image captioning dataset. """
 
     DATA, FILE = PATHS.OUT("data-full.csv"), PATHS.OUT("vocab.csv")
-    SIZE, THRESHOLD = 8096, 3
+    SIZE, THRESHOLD = 8096, 2
     PADDING, UNKNOWN, START, END = 0, 1, 2, 3
 
     def __init__(self):
@@ -26,9 +26,9 @@ class Vocabulary:
             text = self._text()
             most_common = self._most_common(text)
             self._assemble(most_common)
-            self._index_to_token = {index: word
-                                    for word, index in self._token_to_index.items()}
             self._save()
+        self._index_to_token = {index: word
+                                for word, index in self._token_to_index.items()}
 
     def _is_created(self) -> bool:
         """ Check if the vocabulary exists. """
@@ -42,14 +42,12 @@ class Vocabulary:
     def _load(self):
         vocab = read_csv(self.FILE)
         self._token_to_index = dict(zip(vocab["word"], vocab["index"]))
-        self._index_to_token = {index: word for word,
-                                index in self._token_to_index.items()}
 
     def _text(self) -> list[str]:
         """ Extract text from the dataset. """
-        return [str(caption)
+        return [str(caption).strip().lower()
                 for col in [f"caption_{i}" for i in range(1, 6)]
-                for caption in self.data[col]]
+                for caption in self.data[col] if notna(caption)]
 
     def _most_common(self, text: list[str]) -> list[tuple[str, int]]:
         """ Find the most common words in the text. """
