@@ -22,7 +22,7 @@ def train(model: Module, train: DataLoader, val: DataLoader):
     DEBUG(f"Starting training at epoch {start_epoch}.")
 
     try:
-        for epoch in (epochs := trange(start_epoch, TRAIN.EPOCHS, initial=start_epoch, desc="Training", unit="epoch")):
+        for epoch in (epochs := trange(start_epoch, TRAIN.EPOCHS, initial=start_epoch, total=TRAIN.EPOCHS, desc="Training", unit="epoch")):
             losses.loc[epoch, "Train"] = \
                 train_epoch(model, train, optimizer, criterion)
             losses.loc[epoch, "Val"] = validate(model, val, criterion)

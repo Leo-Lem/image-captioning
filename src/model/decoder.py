@@ -60,4 +60,4 @@ class Decoder(Module):
                 "optimizer": optimizer.state_dict()
             }, self.best_model_path)
 
-        losses.to_csv(self.losses_path, index=True)
+        losses.to_csv(self.losses_path, index=False)
