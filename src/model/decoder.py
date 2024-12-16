@@ -4,7 +4,7 @@ from torch import Tensor, load, save, multinomial, softmax, stack, full
 from torch.nn import Module, Embedding, Linear
 from torch.optim import Optimizer
 
-from __param__ import DEBUG, PATHS, DATA, MODEL
+from __param__ import DEBUG, PATHS, DATA, MODEL, FLAGS
 from src.data import Vocabulary
 
 
@@ -20,6 +20,9 @@ class Decoder(Module):
                                                padding_idx=Vocabulary.PADDING)
         self.hidden_to_logits_fc = Linear(in_features=MODEL.HIDDEN_DIM,
                                           out_features=Vocabulary.SIZE)
+
+        if FLAGS.GPU:
+            self.cuda()
 
     def forward(self, image: Tensor, caption: Tensor = None) -> Tensor:
         """ Forward pass for the decoder model that generates a sequence of tokens with optional teacher forcing. """

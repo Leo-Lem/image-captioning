@@ -7,7 +7,6 @@ from src.use import print_data, plot_metrics, plot_training, predictions, predic
 from __param__ import FLAGS
 
 # TODO: fix unknown/empty predictions
-# TODO: add teacher forcing (maybe that's why the model is not learning)
 # TODO: fix cuda
 
 try:
