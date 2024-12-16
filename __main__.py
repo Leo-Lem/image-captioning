@@ -6,9 +6,6 @@ from src.use import print_data, plot_metrics, plot_training, predictions, predic
 
 from __param__ import FLAGS
 
-# TODO: fix unknown/empty predictions
-# TODO: fix cuda
-
 try:
     reformat()
 

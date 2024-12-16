@@ -5,6 +5,8 @@ from __param__ import DATA, MODEL
 from .decoder import Decoder
 from src.data import Vocabulary
 
+# TODO: update lstm if gru works
+
 
 class LSTMDecoder(Decoder):
     """ LSTM-based decoder for sequence generation. """

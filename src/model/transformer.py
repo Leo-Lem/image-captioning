@@ -6,6 +6,8 @@ from __param__ import MODEL, DATA
 from .decoder import Decoder
 from src.data import Vocabulary
 
+# TODO: update transformer if gru works
+
 
 class TransformerDecoder(Decoder):
     """ Transformer-based decoder for sequence generation. """
