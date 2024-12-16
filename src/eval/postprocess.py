@@ -11,31 +11,18 @@ class CaptionPostprocessor:
     def __init__(self):
         self.vocab = Vocabulary()
 
-    def __call__(self, embeddings: Tensor) -> list[str]:
-        """ Extract the most probable token from the embeddings. """
-        batch_size = embeddings.size(0)
-        assert embeddings.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
+    def __call__(self, indices: Tensor) -> list[str]:
+        """ Convert the indices to strings. """
+        assert indices.size() == (indices.size(0), DATA.CAPTION_LEN), indices.size()
+        caption = [self.stringify(self.retokenize(caption))
+                   for caption in indices]
+        return caption
 
-        indexed = embeddings.argmax(dim=-1)
-        assert indexed.size() == (batch_size, DATA.CAPTION_LEN)
-
-        captions = [self.stringify(self.retokenize(indices))
-                    for indices in indexed]
-        return captions
-
-    def extract_from_indexed(self, indexed: Tensor) -> list[list[str]]:
-        """ Extract strings from tokenized captions. """
-        assert indexed.size() == (indexed.size(0), DATA.NUM_CAPTIONS, DATA.CAPTION_LEN)
-        tokenizeds = [[self.stringify(self.retokenize(caption))
-                       for caption in batch]
-                      for batch in indexed]
-        return tokenizeds
-
-    def retokenize(self, indexed: Tensor) -> list[str]:
+    def retokenize(self, indices: Tensor) -> list[str]:
         """ Convert a tokenized caption to a string. """
-        assert indexed.size() == (DATA.CAPTION_LEN,)
+        assert indices.size() == (DATA.CAPTION_LEN,)
         tokenized = filter(lambda x: x != "<unknown>",
-                           [self.vocab[index] for index in indexed.tolist()
+                           [self.vocab[index] for index in indices.tolist()
                             if index not in (Vocabulary.PADDING, Vocabulary.UNKNOWN, Vocabulary.START, Vocabulary.END)])
         return tokenized
 

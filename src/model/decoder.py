@@ -1,6 +1,6 @@
 from os.path import exists
 from pandas import DataFrame
-from torch import Tensor, load, save
+from torch import Tensor, load, save, multinomial, softmax, stack, full
 from torch.nn import Module, Embedding, Linear
 from torch.optim import Optimizer
 
@@ -25,14 +25,46 @@ class Decoder(Module):
         """ Forward pass for the decoder model that generates a sequence of tokens with optional teacher forcing. """
         raise NotImplementedError("Forward pass not implemented.")
 
-    def validate(self, image: Tensor, caption: Tensor) -> int:
+    def predict(self, image: Tensor) -> Tensor:
+        """ Predict a sequence of indices for the given image. """
+        self.eval()
+        indices = self._predict_indices(self(image)).transpose(0, 1)
+        return indices
+
+    def _predict_indices(self, logits: Tensor) -> Tensor:
+        """ Predict the token indices from the logits using softmax sampling. """
+        assert logits.size() == (logits.size(0), DATA.CAPTION_LEN, Vocabulary.SIZE)
+        indices = stack([self._predict_index(logit)
+                        for logit in logits], dim=1)
+        assert indices.size(1) < DATA.CAPTION_LEN
+        return indices
+
+    def _predict_index(self, logit: Tensor) -> Tensor:
+        """ Predict the next token index from the logits using softmax sampling. """
+        assert logit.size() == (logit.size(0), Vocabulary.SIZE)
+        index = multinomial(softmax(logit, dim=-1), num_samples=1).squeeze(-1)
+        assert index.size() == (logit.size(0),)
+        return index
+
+    def _validate(self, image: Tensor, caption: Tensor) -> int:
         """ Validate the input tensors for the forward pass and retrieve the batch size. """
         batch_size = image.size(0)
-        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
         assert caption is None or caption.size() == (batch_size, DATA.CAPTION_LEN)
         return batch_size
 
-    def validate_prediction(self, prediction: Tensor) -> Tensor:
+    def _start_index(self, batch_size: int) -> Tensor:
+        index: Tensor = full((batch_size,), fill_value=Vocabulary.START)
+        assert index.size() == (batch_size,)
+        return index
+
+    def _image_to_hidden(self, image: Tensor, batch_size: int) -> Tensor:
+        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
+        hidden: Tensor = self.image_to_hidden_fc(image)
+        hidden = hidden.squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1)
+        assert hidden.size() == (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
+        return hidden
+
+    def _validate_prediction(self, prediction: Tensor) -> Tensor:
         """ Validate the prediction tensor. """
         assert prediction.size() == (prediction.size(0), DATA.CAPTION_LEN, Vocabulary.SIZE)
         return prediction
@@ -45,8 +77,6 @@ class Decoder(Module):
         """ Load the parameters from the disk if it exists and return the current epoch, the training losses and validation losses. """
         m_path = self.best_model_path if best else self.model_path
         if exists(m_path):
-            DEBUG(f"Loading model from {m_path}…")
-
             checkpoint = load(m_path, weights_only=False)
             self.load_state_dict(checkpoint["state"])
             if optimizer:
@@ -57,9 +87,6 @@ class Decoder(Module):
 
     def save(self, optimizer: Optimizer, losses: DataFrame) -> None:
         """ Save the parameters to the disk. Train and val losses are per epoch (index). """
-        DEBUG(
-            f"Saving model to {self.model_path} and losses to {self.losses_path}")
-
         save({
             "losses": losses,
             "state": self.state_dict(),

@@ -27,16 +27,15 @@ def test(model: Decoder, data: CaptionedImageDataset):
                    module="nltk.translate.bleu_score")
 
     model.load(best=True)
-    model.eval()
     download("wordnet", quiet=True)
     metrics = DataFrame(columns=["BLEU", "METEOR", "NIST"])
 
     for images, captions in tqdm(data.loader(), desc="Testing", unit="batch"):
         true = [[caption.split(" ")
-                for caption in captions]
-                for captions in postprocess.extract_from_indexed(captions)]
+                for caption in postprocess(indices)]
+                for indices in captions[:, 1:, :]]
         pred = [caption.split(" ")
-                for caption in postprocess(model(images))]
+                for caption in postprocess(model.predict(images))]
 
         def failed(metric: str, e: Exception) -> int:
             DEBUG(

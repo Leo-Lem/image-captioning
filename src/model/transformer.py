@@ -30,7 +30,7 @@ class TransformerDecoder(Decoder):
         assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
 
         input = full((batch_size, 1), Vocabulary.START, device=image.device)
-        memory = self.image_fc(image).squeeze(1).unsqueeze(1)
+        memory = self.image_fc(image)
         assert memory.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
         outputs = []

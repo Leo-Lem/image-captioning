@@ -37,7 +37,6 @@ class Vocabulary:
     def _save(self):
         DataFrame(self._token_to_index.items(), columns=["word", "index"])\
             .to_csv(self.FILE, index=False)
-        DEBUG("Saved vocabulary…")
 
     def _load(self):
         vocab = read_csv(self.FILE)

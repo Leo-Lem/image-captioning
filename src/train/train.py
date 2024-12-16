@@ -18,9 +18,7 @@ def train(model: Decoder, train: CaptionedImageDataset, val: CaptionedImageDatas
     start_epoch = len(losses)
 
     if FLAGS.EVAL:
-        DEBUG("EVAL mode. Skipping training.")
         return
-    DEBUG(f"Starting training at epoch {start_epoch}.")
 
     try:
         for epoch in (epochs := trange(start_epoch, TRAIN.EPOCHS, initial=start_epoch, total=TRAIN.EPOCHS, desc="Epochs", unit="epoch")):

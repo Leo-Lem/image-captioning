@@ -18,33 +18,28 @@ class GRUDecoder(Decoder):
                        batch_first=True)
 
     def forward(self, image: Tensor, caption: Tensor = None, ratio: float = .5) -> Tensor:
-        batch_size = self.validate(image, caption)
+        batch_size = self._validate(image, caption)
 
-        hidden: Tensor = self.image_to_hidden_fc(image)\
-            .squeeze(1)\
-            .repeat(MODEL.NUM_LAYERS, 1, 1)
-        assert hidden.size() == (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
+        hidden = self._image_to_hidden(image, batch_size)
 
-        index: Tensor = full((batch_size,), fill_value=Vocabulary.START)
-        assert index.size() == (batch_size,)
+        index = self._start_index(batch_size)
+        logits = tensor([])
 
-        logits_sequence = tensor([])
-
-        for _ in range(DATA.CAPTION_LEN):
+        for i in range(DATA.CAPTION_LEN):
             embedding: Tensor = self.indices_to_embeddings(index.unsqueeze(1))
             assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
             output, hidden = self.gru(embedding, hidden)
             assert output.size() == (batch_size, 1, MODEL.HIDDEN_DIM)
 
-            logits: Tensor = self.hidden_to_logits_fc(output.squeeze(1))
-            assert logits.size() == (batch_size, Vocabulary.SIZE)
+            logit: Tensor = self.hidden_to_logits_fc(output.squeeze(1))
+            assert logit.size() == (batch_size, Vocabulary.SIZE)
 
-            index: Tensor = multinomial(softmax(logits, dim=-1), num_samples=1).squeeze(-1)\
-                if caption is None or rand(1).item() < ratio else caption[:, _]
+            index: Tensor = self._predict_index(logit)\
+                if caption is None or rand(1).item() < ratio else caption[:, i]
             assert index.size() == (batch_size,)
 
-            logits_sequence = cat(
-                [logits_sequence, logits.unsqueeze(1)], dim=1)
+            logits = cat(
+                [logits, logit.unsqueeze(1)], dim=1)
 
-        return self.validate_prediction(logits_sequence)
+        return self._validate_prediction(logits)

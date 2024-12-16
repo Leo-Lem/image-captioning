@@ -6,9 +6,10 @@ from tqdm import tqdm
 
 from __param__ import DATA
 from src.data import Vocabulary
+from src.model import Decoder
 
 
-def train_epoch(model: Module, train: DataLoader, optimizer: Adam, criterion: CrossEntropyLoss, teacher_forcing_ratio: float) -> float:
+def train_epoch(model: Decoder, train: DataLoader, optimizer: Adam, criterion: CrossEntropyLoss, teacher_forcing_ratio: float) -> float:
     """ Train the model for one epoch. """
     model.train()
     total_loss = 0.0
