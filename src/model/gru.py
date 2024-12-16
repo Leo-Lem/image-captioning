@@ -1,7 +1,7 @@
-from torch import full, long, stack, Tensor
+from torch import Tensor, full, tensor, cat, multinomial, softmax, rand
 from torch.nn import GRU
 
-from __param__ import DATA, MODEL, TRAIN
+from __param__ import DATA, MODEL
 from .decoder import Decoder
 from src.data import Vocabulary
 
@@ -17,36 +17,34 @@ class GRUDecoder(Decoder):
                        dropout=MODEL.DROPOUT,
                        batch_first=True)
 
-    def forward(self, image: Tensor) -> Tensor:
-        batch_size = image.size(0)
-        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
+    def forward(self, image: Tensor, caption: Tensor = None, ratio: float = .5) -> Tensor:
+        batch_size = self.validate(image, caption)
 
-        hidden = self.image_fc(image).squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1)
+        hidden: Tensor = self.image_to_hidden_fc(image)\
+            .squeeze(1)\
+            .repeat(MODEL.NUM_LAYERS, 1, 1)
         assert hidden.size() == (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
 
-        input = full((batch_size, 1), fill_value=Vocabulary.START,
-                     device=image.device)
-        embedding = self.embedding(input)
-        assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
+        index: Tensor = full((batch_size,), fill_value=Vocabulary.START)
+        assert index.size() == (batch_size,)
 
-        outputs = []
+        logits_sequence = tensor([])
 
         for _ in range(DATA.CAPTION_LEN):
+            embedding: Tensor = self.indices_to_embeddings(index.unsqueeze(1))
+            assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
+
             output, hidden = self.gru(embedding, hidden)
             assert output.size() == (batch_size, 1, MODEL.HIDDEN_DIM)
 
-            output = self.fc(output.squeeze(1))
-            assert output.size() == (batch_size, Vocabulary.SIZE)
+            logits: Tensor = self.hidden_to_logits_fc(output.squeeze(1))
+            assert logits.size() == (batch_size, Vocabulary.SIZE)
 
-            outputs.append(output)
+            index: Tensor = multinomial(softmax(logits, dim=-1), num_samples=1).squeeze(-1)\
+                if caption is None or rand(1).item() < ratio else caption[:, _]
+            assert index.size() == (batch_size,)
 
-            input = output.argmax(1).unsqueeze(1)
-            assert input.size() == (batch_size, 1)
+            logits_sequence = cat(
+                [logits_sequence, logits.unsqueeze(1)], dim=1)
 
-            embedding = self.embedding(input)
-            assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
-
-        outputs = stack(outputs, dim=1)
-        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
-
-        return outputs
+        return self.validate_prediction(logits_sequence)

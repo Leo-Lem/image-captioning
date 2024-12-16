@@ -81,7 +81,7 @@ class DATA:
     SAMPLE = args.sample
     RELOAD = args.reload
     FEATURE_DIM = 1280
-    CAPTION_LEN = 15
+    CAPTION_LEN = 20
     NUM_CAPTIONS = 5
 
 

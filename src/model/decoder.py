@@ -13,17 +13,29 @@ class Decoder(Module):
 
     def __init__(self) -> None:
         super().__init__()
-        self.image_fc = Linear(in_features=DATA.FEATURE_DIM,
-                               out_features=MODEL.HIDDEN_DIM)
-        self.embedding = Embedding(num_embeddings=Vocabulary.SIZE,
-                                   embedding_dim=MODEL.EMBEDDING_DIM,
-                                   padding_idx=Vocabulary.PADDING)
-        self.fc = Linear(in_features=MODEL.HIDDEN_DIM,
-                         out_features=Vocabulary.SIZE)
+        self.image_to_hidden_fc = Linear(in_features=DATA.FEATURE_DIM,
+                                         out_features=MODEL.HIDDEN_DIM)
+        self.indices_to_embeddings = Embedding(num_embeddings=Vocabulary.SIZE,
+                                               embedding_dim=MODEL.EMBEDDING_DIM,
+                                               padding_idx=Vocabulary.PADDING)
+        self.hidden_to_logits_fc = Linear(in_features=MODEL.HIDDEN_DIM,
+                                          out_features=Vocabulary.SIZE)
 
-    def forward(self, image: Tensor) -> Tensor:
-        """ Forward pass for the decoder model that generates a sequence of tokens. """
-        raise NotImplementedError("Subclasses should implement this!")
+    def forward(self, image: Tensor, caption: Tensor = None) -> Tensor:
+        """ Forward pass for the decoder model that generates a sequence of tokens with optional teacher forcing. """
+        raise NotImplementedError("Forward pass not implemented.")
+
+    def validate(self, image: Tensor, caption: Tensor) -> int:
+        """ Validate the input tensors for the forward pass and retrieve the batch size. """
+        batch_size = image.size(0)
+        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
+        assert caption is None or caption.size() == (batch_size, DATA.CAPTION_LEN)
+        return batch_size
+
+    def validate_prediction(self, prediction: Tensor) -> Tensor:
+        """ Validate the prediction tensor. """
+        assert prediction.size() == (prediction.size(0), DATA.CAPTION_LEN, Vocabulary.SIZE)
+        return prediction
 
     best_model_path = PATHS.MODEL(f"{MODEL.NAME}-best.pt")
     model_path = PATHS.MODEL(f"{MODEL.NAME}.pt")

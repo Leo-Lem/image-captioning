@@ -26,14 +26,13 @@ class CaptionedImageDataset(Dataset):
                             batch_size=TRAIN.BATCH_SIZE if batch else 1,
                             collate_fn=collate_fn,
                             shuffle=shuffle)
-        DEBUG(f"Created DataLoader ({len(loader)} batches)")
+
         return loader
 
     def _load_data(self, name: Literal["full", "train", "val", "test"]) -> DataFrame:
         """ Load the specified dataset. """
         name = 'sample' if DATA.SAMPLE else name
         data = read_csv(PATHS.OUT(f"data-{name}.csv"), dtype=str)
-        DEBUG(f"Loaded {name} data ({data.shape})\n{data.head(3)}")
         return data
 
     def __len__(self) -> int:
@@ -44,6 +43,7 @@ class CaptionedImageDataset(Dataset):
         image = self.preprocess_image(self.image_name(idx))
         captions = stack([self.preprocess_caption(caption)
                          for caption in self.captions(idx)])
+        assert captions.size() == (DATA.NUM_CAPTIONS, DATA.CAPTION_LEN)
         return image, captions
 
     def image_name(self, idx: int) -> str:

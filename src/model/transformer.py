@@ -36,7 +36,8 @@ class TransformerDecoder(Decoder):
         outputs = []
 
         for t in range(DATA.CAPTION_LEN):
-            tgt = self.embedding(input) + self.pos_enc[:, :t + 1, :]
+            tgt = self.indices_to_embeddings(
+                input) + self.pos_enc[:, :t + 1, :]
             tgt_mask = self.mask(t + 1).to(image.device)
 
             decoder_output = self.transformer_decoder(

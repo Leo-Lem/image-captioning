@@ -22,7 +22,7 @@ class LSTMDecoder(Decoder):
         batch_size = image.size(0)
         assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
 
-        hidden = (self.image_fc(image).squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1),
+        hidden = (self.image_to_hidden_fc(image).squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1),
                   zeros((1, batch_size, MODEL.HIDDEN_DIM), device=image.device).repeat(MODEL.NUM_LAYERS, 1, 1))
 
         assert hidden[0].size() == hidden[1].size() == \
@@ -30,7 +30,7 @@ class LSTMDecoder(Decoder):
 
         input = full((batch_size, 1), fill_value=Vocabulary.START,
                      device=image.device)
-        embedding = self.embedding(input)
+        embedding = self.indices_to_embeddings(input)
         assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
         outputs = []
@@ -39,7 +39,7 @@ class LSTMDecoder(Decoder):
             output, hidden = self.lstm(embedding, hidden)
             assert output.size() == (batch_size, 1, MODEL.HIDDEN_DIM)
 
-            output = self.fc(output.squeeze(1))
+            output = self.hidden_to_logits_fc(output.squeeze(1))
             assert output.size() == (batch_size, Vocabulary.SIZE)
 
             outputs.append(output)
@@ -47,7 +47,7 @@ class LSTMDecoder(Decoder):
             input = output.argmax(1).unsqueeze(1)
             assert input.size() == (batch_size, 1)
 
-            embedding = self.embedding(input)
+            embedding = self.indices_to_embeddings(input)
             assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
         outputs = stack(outputs, dim=1)

@@ -25,7 +25,9 @@ def train(model: Decoder, train: CaptionedImageDataset, val: CaptionedImageDatas
     try:
         for epoch in (epochs := trange(start_epoch, TRAIN.EPOCHS, initial=start_epoch, total=TRAIN.EPOCHS, desc="Epochs", unit="epoch")):
             losses.loc[epoch, "Training"] = \
-                train_epoch(model, train.loader(), optimizer, criterion)
+                train_epoch(model, train.loader(),
+                            optimizer, criterion,
+                            teacher_forcing_ratio=max(0.5, 1 - epoch / epochs.total))
             losses.loc[epoch, "Validation"] = \
                 validate(model, val.loader(), criterion)
             epochs.set_postfix(train=losses["Training"][epoch],

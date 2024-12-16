@@ -22,7 +22,7 @@ def display(image_name: str, caption: str, true_caption: str = None, ax: pyplot.
     if ax:
         ax.imshow(image)
         ax.set_title(caption
-                     if true_caption is None else f"Prediction: {caption}\nTrue: {true_caption}", fontsize=10, pad=10)
+                     if true_caption is None else f"Prediction: {caption}\nTrue: {true_caption}", fontsize=8, pad=10)
     else:
         pyplot.imshow(image)
         pyplot.title(caption

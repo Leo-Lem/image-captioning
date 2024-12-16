@@ -4,7 +4,7 @@ from torch.nn.functional import adaptive_avg_pool2d
 from torchvision.models import efficientnet_b0
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
-from __param__ import PATHS, FLAGS, DATA
+from __param__ import PATHS, FLAGS, DATA, DEBUG
 from .vocab import Vocabulary
 
 
@@ -13,20 +13,32 @@ class CaptionPreprocessor:
         self.vocab = Vocabulary()
 
     def __call__(self, caption: str) -> Tensor:
-        """ Preprocess the caption and return the indices. """
-        indices = self.caption_indices(caption)
-        return indices
+        """ Preprocess the caption and return the index tensor. """
+        indices = self.index(caption)
+        padded = self.pad_or_truncate(indices)
+        padded_tensor = tensor(padded)
+        if FLAGS.GPU:
+            return padded_tensor.cuda()
 
-    def caption_indices(self, caption: str) -> Tensor:
-        """ Get the padded tensor representation of the caption. """
-        caption = [self.vocab.START] + [self.vocab[word]
-                                        for word in caption.split()]
-        if len(caption) > DATA.CAPTION_LEN-1:
-            padded = caption[:DATA.CAPTION_LEN-1] + [self.vocab.END]
+        assert padded_tensor.shape == (DATA.CAPTION_LEN,)
+
+        return padded_tensor
+
+    def pad_or_truncate(self, indices: list[int]) -> list[int]:
+        """ Pad the indices with the PADDING token or truncate if necessary. """
+        if len(indices) < DATA.CAPTION_LEN-1:
+            padded = indices + [self.vocab.END] + \
+                [self.vocab.PADDING] * (DATA.CAPTION_LEN-1 - len(indices))
         else:
-            padded = caption + [self.vocab.END] + [self.vocab.PADDING] * \
-                (DATA.CAPTION_LEN-1 - len(caption))
-        return tensor(padded)
+            padded = indices[:DATA.CAPTION_LEN-1] + [self.vocab.END]
+        return padded
+
+    def index(self, caption: str) -> list[int]:
+        """ Get the indices of the words in the caption. """
+        indices = [self.vocab.START] + [self.vocab[word]
+                                        for word in caption.split()]
+
+        return indices
 
 
 class ImagePreprocessor:
@@ -40,6 +52,9 @@ class ImagePreprocessor:
         image = self.image(image)
         tensor = self.image_tensor(image)
         features = self.image_features(tensor)
+
+        assert features.shape == (1, DATA.FEATURE_DIM)
+
         return features
 
     def image_features(self, tensor: Tensor) -> Tensor:
@@ -52,14 +67,14 @@ class ImagePreprocessor:
 
     def image_tensor(self, image: Image) -> Tensor:
         """ Get the tensor representation of the image. """
-        tensor: Tensor = Compose([
+        encoded: Tensor = Compose([
             Resize((224, 224)),
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])(image)
         if FLAGS.GPU:
-            return tensor.cuda()
-        return tensor
+            return encoded.cuda()
+        return encoded
 
     def image(self, name: str) -> Image:
         """ Get the image with the specified name. """
