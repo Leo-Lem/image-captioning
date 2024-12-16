@@ -29,15 +29,15 @@ class Decoder(Module):
     def predict(self, image: Tensor) -> Tensor:
         """ Predict a sequence of indices for the given image. """
         self.eval()
-        indices = self._predict_indices(self(image)).transpose(0, 1)
+        indices = self._predict_indices(self(image))
         return indices
 
     def _predict_indices(self, logits: Tensor) -> Tensor:
         """ Predict the token indices from the logits using softmax sampling. """
         assert logits.size() == (logits.size(0), DATA.CAPTION_LEN, Vocabulary.SIZE)
         indices = stack([self._predict_index(logit)
-                        for logit in logits], dim=1)
-        assert indices.size(1) <= DATA.CAPTION_LEN, indices.size()
+                        for logit in logits], dim=1).transpose(0, 1)
+        assert indices.size(1) <= DATA.CAPTION_LEN
         return indices
 
     def _predict_index(self, logit: Tensor) -> Tensor:
