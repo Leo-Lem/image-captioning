@@ -1,7 +1,7 @@
-from torch import Tensor, full, tensor, cat, multinomial, softmax, rand
+from torch import Tensor, tensor, cat, rand
 from torch.nn import GRU
 
-from __param__ import DATA, MODEL
+from __param__ import DATA, MODEL, FLAGS
 from .decoder import Decoder
 from src.data import Vocabulary
 
@@ -20,10 +20,9 @@ class GRUDecoder(Decoder):
     def forward(self, image: Tensor, caption: Tensor = None, ratio: float = .5) -> Tensor:
         batch_size = self._validate(image, caption)
 
-        hidden = self._image_to_hidden(image, batch_size)
-
-        index = self._start_index(batch_size)
-        logits = tensor([])
+        hidden = self._image_to_hidden(image.to(self.device), batch_size)
+        index = self._start_index(batch_size).to(self.device)
+        logits = tensor([]).to(self.device)
 
         for i in range(DATA.CAPTION_LEN):
             embedding: Tensor = self.indices_to_embeddings(index.unsqueeze(1))

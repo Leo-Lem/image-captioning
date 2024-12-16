@@ -1,7 +1,7 @@
 from logging import basicConfig, debug
 from argparse import ArgumentParser
 from os import path, makedirs
-from torch import cuda
+from torch import cuda, device
 
 parser = ArgumentParser(
     description="Train an image captioning pipeline with different decoder architectures")
@@ -41,7 +41,6 @@ class FLAGS:
     EVAL = args.eval or args.describe or args.predict
     DESCRIBE = args.describe or args.predict
     PREDICT = args.predict
-    GPU = cuda.is_available()
 
     @staticmethod
     def DEBUG(message: str = "") -> bool:
@@ -95,6 +94,7 @@ class MODEL:
 
 
 class TRAIN:
+    DEVICE = device("cuda" if cuda.is_available() else "cpu")
     EPOCHS = args.epochs
     PATIENCE = args.patience
     BATCH_SIZE = args.batch

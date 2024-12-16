@@ -3,16 +3,18 @@ from torch.nn import Module, CrossEntropyLoss
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from __param__ import DATA
+from __param__ import DATA, TRAIN
 from src.data import Vocabulary
 
 
 def validate(model: Module, val: DataLoader, criterion: CrossEntropyLoss) -> float:
-    """ Validate the model. """
     model.eval()
     total_loss = 0.0
     with no_grad():
         for image, captions in (batches := tqdm(val, desc="Validation", unit="batch")):
+            image: Tensor = image.to(TRAIN.DEVICE)
+            captions: Tensor = captions.to(TRAIN.DEVICE)
+
             prediction: Tensor = model(image)
             predictions = prediction\
                 .unsqueeze(1)\

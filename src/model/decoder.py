@@ -4,7 +4,7 @@ from torch import Tensor, load, save, multinomial, softmax, stack, full
 from torch.nn import Module, Embedding, Linear
 from torch.optim import Optimizer
 
-from __param__ import DEBUG, PATHS, DATA, MODEL, FLAGS
+from __param__ import DEBUG, PATHS, DATA, MODEL, TRAIN
 from src.data import Vocabulary
 
 
@@ -13,6 +13,7 @@ class Decoder(Module):
 
     def __init__(self) -> None:
         super().__init__()
+        self.device = TRAIN.DEVICE
         self.image_to_hidden_fc = Linear(in_features=DATA.FEATURE_DIM,
                                          out_features=MODEL.HIDDEN_DIM)
         self.indices_to_embeddings = Embedding(num_embeddings=Vocabulary.SIZE,
@@ -20,9 +21,6 @@ class Decoder(Module):
                                                padding_idx=Vocabulary.PADDING)
         self.hidden_to_logits_fc = Linear(in_features=MODEL.HIDDEN_DIM,
                                           out_features=Vocabulary.SIZE)
-
-        if FLAGS.GPU:
-            self.cuda()
 
     def forward(self, image: Tensor, caption: Tensor = None) -> Tensor:
         """ Forward pass for the decoder model that generates a sequence of tokens with optional teacher forcing. """
@@ -39,7 +37,7 @@ class Decoder(Module):
         assert logits.size() == (logits.size(0), DATA.CAPTION_LEN, Vocabulary.SIZE)
         indices = stack([self._predict_index(logit)
                         for logit in logits], dim=1)
-        assert indices.size(1) < DATA.CAPTION_LEN
+        assert indices.size(1) <= DATA.CAPTION_LEN, indices.size()
         return indices
 
     def _predict_index(self, logit: Tensor) -> Tensor:

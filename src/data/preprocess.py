@@ -4,7 +4,7 @@ from torch.nn.functional import adaptive_avg_pool2d
 from torchvision.models import efficientnet_b0
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 
-from __param__ import PATHS, FLAGS, DATA, DEBUG
+from __param__ import PATHS, FLAGS, DATA, TRAIN
 from .vocab import Vocabulary
 
 
@@ -16,9 +16,7 @@ class CaptionPreprocessor:
         """ Preprocess the caption and return the index tensor. """
         indices = self.index(caption)
         padded = self.pad_or_truncate(indices)
-        padded_tensor = tensor(padded)
-        if FLAGS.GPU:
-            return padded_tensor.cuda()
+        padded_tensor = tensor(padded).to(TRAIN.DEVICE)
 
         assert padded_tensor.shape == (DATA.CAPTION_LEN,)
 
@@ -43,9 +41,9 @@ class CaptionPreprocessor:
 
 class ImagePreprocessor:
     def __init__(self):
-        self.encoder = efficientnet_b0(weights="DEFAULT").eval()
-        if FLAGS.GPU:
-            self.encoder.cuda()
+        self.encoder = efficientnet_b0(weights="DEFAULT")\
+            .eval()\
+            .to(TRAIN.DEVICE)
 
     def __call__(self, image: str) -> Tensor:
         """ Preprocess the image and return the features. """
@@ -72,9 +70,7 @@ class ImagePreprocessor:
             ToTensor(),
             Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])(image)
-        if FLAGS.GPU:
-            return encoded.cuda()
-        return encoded
+        return encoded.to(TRAIN.DEVICE)
 
     def image(self, name: str) -> Image:
         """ Get the image with the specified name. """
