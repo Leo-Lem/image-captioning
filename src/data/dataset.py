@@ -20,7 +20,7 @@ class CaptionedImageDataset(Dataset):
         def collate_fn(batch: list[tuple[Tensor, Tensor]]) -> tuple[Tensor, Tensor]:
             images, captions = zip(*batch)
             images, captions = stack(images), stack(captions)
-            return images.to(TRAIN.DEVICE), captions.to(TRAIN.DEVICE)
+            return images, captions
 
         loader = DataLoader(self,
                             batch_size=TRAIN.BATCH_SIZE if batch else 1,

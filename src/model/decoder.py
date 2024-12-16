@@ -13,7 +13,6 @@ class Decoder(Module):
 
     def __init__(self) -> None:
         super().__init__()
-        self.device = TRAIN.DEVICE
         self.image_to_hidden_fc = Linear(in_features=DATA.FEATURE_DIM,
                                          out_features=MODEL.HIDDEN_DIM)
         self.indices_to_embeddings = Embedding(num_embeddings=Vocabulary.SIZE,

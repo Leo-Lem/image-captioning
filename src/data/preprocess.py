@@ -16,7 +16,7 @@ class CaptionPreprocessor:
         """ Preprocess the caption and return the index tensor. """
         indices = self.index(caption)
         padded = self.pad_or_truncate(indices)
-        padded_tensor = tensor(padded).to(TRAIN.DEVICE)
+        padded_tensor = tensor(padded)
 
         assert padded_tensor.shape == (DATA.CAPTION_LEN,)
 

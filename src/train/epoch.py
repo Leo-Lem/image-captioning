@@ -15,9 +15,6 @@ def train_epoch(model: Decoder, train: DataLoader, optimizer: Adam, criterion: C
     total_loss = 0.0
 
     for image, captions in (batches := tqdm(train, desc="Training", unit="batch")):
-        image: Tensor = image.to(TRAIN.DEVICE)
-        captions: Tensor = captions.to(TRAIN.DEVICE)
-
         optimizer.zero_grad()
 
         prediction: Tensor = model(image,
@@ -28,7 +25,7 @@ def train_epoch(model: Decoder, train: DataLoader, optimizer: Adam, criterion: C
         predictions = predictions.view(-1, predictions.size(-1))
         targets: Tensor = captions.view(-1)
 
-        loss: Tensor = criterion(predictions, targets) / \
+        loss: Tensor = criterion(predictions, targets.to(TRAIN.device)) / \
             targets.ne(Vocabulary.PADDING).sum()
         total_loss += loss.item()
         batches.set_postfix(loss=total_loss / len(batches))

@@ -1,7 +1,7 @@
 from torch import Tensor, tensor, cat, rand
 from torch.nn import GRU
 
-from __param__ import DATA, MODEL, FLAGS
+from __param__ import DATA, MODEL, TRAIN
 from .decoder import Decoder
 from src.data import Vocabulary
 
@@ -16,13 +16,14 @@ class GRUDecoder(Decoder):
                        num_layers=MODEL.NUM_LAYERS,
                        dropout=MODEL.DROPOUT,
                        batch_first=True)
+        self.to(TRAIN.DEVICE)
 
     def forward(self, image: Tensor, caption: Tensor = None, ratio: float = .5) -> Tensor:
         batch_size = self._validate(image, caption)
 
-        hidden = self._image_to_hidden(image.to(self.device), batch_size)
-        index = self._start_index(batch_size).to(self.device)
-        logits = tensor([]).to(self.device)
+        hidden = self._image_to_hidden(image.to(TRAIN.DEVICE), batch_size)
+        index = self._start_index(batch_size).to(TRAIN.DEVICE)
+        logits = tensor([]).to(TRAIN.DEVICE)
 
         for i in range(DATA.CAPTION_LEN):
             embedding: Tensor = self.indices_to_embeddings(index.unsqueeze(1))
@@ -35,10 +36,9 @@ class GRUDecoder(Decoder):
             assert logit.size() == (batch_size, Vocabulary.SIZE)
 
             index: Tensor = self._predict_index(logit)\
-                if caption is None or rand(1).item() < ratio else caption[:, i]
+                if caption is None or rand(1).item() < ratio else caption.to(TRAIN.DEVICE)[:, i]
             assert index.size() == (batch_size,)
 
-            logits = cat(
-                [logits, logit.unsqueeze(1)], dim=1)
+            logits = cat([logits, logit.unsqueeze(1)], dim=1)
 
         return self._validate_prediction(logits)
