@@ -25,7 +25,7 @@ def train_epoch(model: Decoder, train: DataLoader, optimizer: Adam, criterion: C
         predictions = predictions.view(-1, predictions.size(-1))
         targets: Tensor = captions.view(-1)
 
-        loss: Tensor = criterion(predictions, targets.to(TRAIN.device)) / \
+        loss: Tensor = criterion(predictions, targets.to(TRAIN.DEVICE)) / \
             targets.ne(Vocabulary.PADDING).sum()
         total_loss += loss.item()
         batches.set_postfix(loss=total_loss / len(batches))
