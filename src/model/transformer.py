@@ -2,11 +2,9 @@ from torch import full, long, stack, triu, zeros, ones, Tensor
 from torch.nn import Linear, Parameter, TransformerDecoderLayer
 from torch.nn import TransformerDecoder as TransformerDecoderTorch
 
-from __param__ import MODEL, DATA
+from __param__ import MODEL, DATA, TRAIN
 from .decoder import Decoder
 from src.data import Vocabulary
-
-# TODO: update transformer if gru works
 
 
 class TransformerDecoder(Decoder):
@@ -31,16 +29,17 @@ class TransformerDecoder(Decoder):
         batch_size = image.size(0)
         assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
 
-        input = full((batch_size, 1), Vocabulary.START, device=image.device)
+        input = full((batch_size, 1), Vocabulary.START, device=TRAIN.DEVICE)
         memory = self.image_fc(image)
         assert memory.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
         outputs = []
 
         for t in range(DATA.CAPTION_LEN):
-            tgt = self.indices_to_embeddings(
-                input) + self.pos_enc[:, :t + 1, :]
-            tgt_mask = self.mask(t + 1).to(image.device)
+            tgt = self.indices_to_embeddings(input)\
+                + self.pos_enc[:, :t + 1, :]
+            tgt_mask = triu(ones(t+1, t+1, device=TRAIN.DEVICE),
+                            diagonal=1).bool()
 
             decoder_output = self.transformer_decoder(
                 tgt=tgt, memory=memory, tgt_mask=tgt_mask)
@@ -56,7 +55,3 @@ class TransformerDecoder(Decoder):
         assert outputs.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
 
         return outputs
-
-    @staticmethod
-    def mask(size: int) -> Tensor:
-        return triu(ones(size, size), diagonal=1).bool()

@@ -22,7 +22,7 @@ def train_epoch(model: Decoder, train: DataLoader, optimizer: Adam, criterion: C
         loss: Tensor = criterion(predictions.view(-1, predictions.size(-1)),
                                  targets.reshape(-1))
         total_loss += loss.item()
-        batches.set_postfix(loss=total_loss / len(batches))
+        batches.set_postfix(loss=loss.item())
 
         loss.backward()
         optimizer.step()

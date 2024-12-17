@@ -37,7 +37,7 @@ class GRUDecoder(Decoder):
             logits.append(logit)
 
             index: Tensor = self._predict_index(logit)\
-                if caption is None or rand(1).item() < ratio else caption[:, i]
+                if caption is None or ratio < rand(1).item() else caption[:, i]
             assert index.size() == (batch_size,)
 
         return self._validate_prediction(logits)

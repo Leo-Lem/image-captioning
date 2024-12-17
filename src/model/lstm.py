@@ -1,11 +1,9 @@
-from torch import full, long, stack, Tensor, zeros
+from torch import Tensor, zeros, rand
 from torch.nn import LSTM
 
-from __param__ import DATA, MODEL
+from __param__ import DATA, MODEL, TRAIN
 from .decoder import Decoder
 from src.data import Vocabulary
-
-# TODO: update lstm if gru works
 
 
 class LSTMDecoder(Decoder):
@@ -18,41 +16,29 @@ class LSTMDecoder(Decoder):
                          num_layers=MODEL.NUM_LAYERS,
                          dropout=MODEL.DROPOUT,
                          batch_first=True)
+        self.to(TRAIN.DEVICE)
 
-    def forward(self, image: Tensor) -> Tensor:
-        """ Predict the caption for the given image. """
-        batch_size = image.size(0)
-        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
+    def forward(self, image: Tensor, caption: Tensor = None, ratio: float = .5) -> Tensor:
+        batch_size = self._validate(image, caption)
 
-        hidden = (self.image_to_hidden_fc(image).squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1),
-                  zeros((1, batch_size, MODEL.HIDDEN_DIM), device=image.device).repeat(MODEL.NUM_LAYERS, 1, 1))
+        hidden = (self._image_to_hidden(image, batch_size),
+                  zeros((MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM), device=image.device))
+        index = self._start_index(batch_size)
+        logits = []
 
-        assert hidden[0].size() == hidden[1].size() == \
-            (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
+        for i in range(DATA.CAPTION_LEN-1):
+            embedding: Tensor = self.indices_to_embeddings(index.unsqueeze(1))
+            assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
-        input = full((batch_size, 1), fill_value=Vocabulary.START,
-                     device=image.device)
-        embedding = self.indices_to_embeddings(input)
-        assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
-
-        outputs = []
-
-        for _ in range(DATA.CAPTION_LEN):
             output, hidden = self.lstm(embedding, hidden)
             assert output.size() == (batch_size, 1, MODEL.HIDDEN_DIM)
 
-            output = self.hidden_to_logits_fc(output.squeeze(1))
-            assert output.size() == (batch_size, Vocabulary.SIZE)
+            logit: Tensor = self.hidden_to_logits_fc(output.squeeze(1))
+            assert logit.size() == (batch_size, Vocabulary.SIZE)
+            logits.append(logit)
 
-            outputs.append(output)
+            index: Tensor = self._predict_index(logit)\
+                if caption is None or ratio < rand(1).item() else caption[:, i]
+            assert index.size() == (batch_size,)
 
-            input = output.argmax(1).unsqueeze(1)
-            assert input.size() == (batch_size, 1)
-
-            embedding = self.indices_to_embeddings(input)
-            assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
-
-        outputs = stack(outputs, dim=1)
-        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
-
-        return outputs
+        return self._validate_prediction(logits)

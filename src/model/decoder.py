@@ -62,7 +62,9 @@ class Decoder(Module):
         assert image.size() == (batch_size, DATA.FEATURE_DIM), image.size()
         hidden: Tensor = self.image_to_hidden_fc(image.unsqueeze(0))
         hidden = hidden.squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1)
-        assert hidden.size() == (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
+        assert hidden.size() == (MODEL.NUM_LAYERS,
+                                 batch_size,
+                                 self.image_to_hidden_fc.out_features)
         return hidden
 
     def _validate_prediction(self, logits: list[Tensor]) -> Tensor:
