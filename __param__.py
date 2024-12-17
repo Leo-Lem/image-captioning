@@ -22,7 +22,7 @@ parser.add_argument("--describe", action="store_true",
 parser.add_argument("--predict", type=str, default=None,
                     help="predict the caption for a given image path")
 
-parser.add_argument("--epochs", type=int, default=500,
+parser.add_argument("--epochs", type=int, default=100,
                     help="number of epochs to train the model")
 parser.add_argument("--patience", type=int, default=None,
                     help="number of epochs without improvement to stop training")
@@ -90,7 +90,6 @@ class MODEL:
     EMBEDDING_DIM = 256
     NUM_LAYERS = 2
     DROPOUT = 0.1
-    ATTENTION_HEADS = 8
 
 
 class TRAIN:

@@ -15,7 +15,7 @@ def plot_training():
     pyplot.xlabel("Epoch")
     pyplot.ylabel("Loss")
     pyplot.legend()
-    pyplot.title("Training")
+    pyplot.title(f"Training and Validation Loss for {MODEL.NAME}")
     pyplot.savefig(PATHS.OUT(f"training-{MODEL.NAME}.png"))
     tqdm.write(
         f"Training graph saved to '{PATHS.OUT(f'training-{MODEL.NAME}.png')}'.")
