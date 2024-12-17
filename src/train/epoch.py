@@ -4,8 +4,6 @@ from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from __param__ import DATA, TRAIN
-from src.data import Vocabulary
 from src.model import Decoder
 
 
@@ -15,7 +13,7 @@ def train_epoch(model: Decoder, train: DataLoader, optimizer: Adam, criterion: C
     total_loss = 0.0
 
     for images, captions in (batches := tqdm(train, desc="Training", unit="batch")):
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
 
         predictions: Tensor = model(images, captions, teacher_forcing_ratio)
         targets: Tensor = captions[:, 1:]

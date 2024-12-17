@@ -3,9 +3,6 @@ from torch.nn import Module, CrossEntropyLoss
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from __param__ import DATA, TRAIN
-from src.data import Vocabulary
-
 
 def validate(model: Module, val: DataLoader, criterion: CrossEntropyLoss) -> float:
     model.eval()

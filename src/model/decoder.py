@@ -53,7 +53,8 @@ class Decoder(Module):
         return batch_size
 
     def _start_index(self, batch_size: int) -> Tensor:
-        index: Tensor = full((batch_size,), fill_value=Vocabulary.START)
+        index: Tensor = \
+            full((batch_size,), fill_value=Vocabulary.START, device=TRAIN.DEVICE)
         assert index.size() == (batch_size,)
         return index
 
