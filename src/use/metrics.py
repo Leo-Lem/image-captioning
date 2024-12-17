@@ -6,7 +6,7 @@ from tqdm import tqdm
 from __param__ import PATHS
 
 
-def plot_metrics(references: dict[str, float] = {"BLEU": 0.0, "METEOR": 0.0, "NIST": 0.0}):
+def plot_metrics(references: dict[str, float]):
     """ Plot the metrics of the models. """
     data = read_csv(PATHS.OUT("metrics.csv"))
 

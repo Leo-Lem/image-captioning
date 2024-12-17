@@ -6,6 +6,8 @@ from src.use import print_data, plot_metrics, plot_training, predictions, predic
 
 from __param__ import FLAGS
 
+# TODO: verify gpu still works
+
 try:
     reformat()
 
