@@ -1,8 +1,8 @@
-from torch import full, long, stack, triu, zeros, ones, Tensor
-from torch.nn import Linear, Parameter, TransformerDecoderLayer
+from torch import Tensor, arange
+from torch.nn import TransformerDecoderLayer, Embedding, Linear
 from torch.nn import TransformerDecoder as TransformerDecoderTorch
 
-from __param__ import MODEL, DATA, TRAIN
+from __param__ import DATA, MODEL, TRAIN
 from .decoder import Decoder
 from src.data import Vocabulary
 
@@ -12,46 +12,34 @@ class TransformerDecoder(Decoder):
 
     def __init__(self) -> None:
         super().__init__()
-        max_length = 100
-        max_length = 100
-        self.pos_enc = Parameter(zeros(1, max_length, MODEL.EMBEDDING_DIM))
-        self.image_fc = Linear(DATA.FEATURE_DIM, MODEL.EMBEDDING_DIM)
+        self.memory_projection = Linear(MODEL.HIDDEN_DIM, MODEL.EMBEDDING_DIM)
+        self.output_projection = Linear(MODEL.EMBEDDING_DIM, Vocabulary.SIZE)
+        self.positional_embeddings = Embedding(DATA.CAPTION_LEN-1,
+                                               MODEL.EMBEDDING_DIM)
         self.transformer_decoder = TransformerDecoderTorch(
             TransformerDecoderLayer(d_model=MODEL.EMBEDDING_DIM,
-                                    nhead=MODEL.ATTENTION_HEADS,
+                                    nhead=8,
                                     dim_feedforward=MODEL.HIDDEN_DIM,
                                     dropout=MODEL.DROPOUT,
                                     batch_first=True),
             num_layers=MODEL.NUM_LAYERS)
-        self.fc = Linear(MODEL.EMBEDDING_DIM, Vocabulary.SIZE)
+        self.to(TRAIN.DEVICE)
 
-    def forward(self, image: Tensor) -> Tensor:
-        batch_size = image.size(0)
-        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
+    def forward(self, image: Tensor, caption: Tensor = None, _=None) -> Tensor:
+        batch_size = self._validate(image, caption)
 
-        input = full((batch_size, 1), Vocabulary.START, device=TRAIN.DEVICE)
-        memory = self.image_fc(image)
-        assert memory.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
+        memory = self._image_to_hidden(image, batch_size)
+        memory = self.memory_projection(memory).transpose(0, 1)
 
-        outputs = []
+        positions = arange(DATA.CAPTION_LEN-1, device=TRAIN.DEVICE)
+        positional_embedding = self.positional_embeddings(positions)\
+            .unsqueeze(0)\
+            .repeat(batch_size, 1, 1)
 
-        for t in range(DATA.CAPTION_LEN):
-            tgt = self.indices_to_embeddings(input)\
-                + self.pos_enc[:, :t + 1, :]
-            tgt_mask = triu(ones(t+1, t+1, device=TRAIN.DEVICE),
-                            diagonal=1).bool()
+        output = self.transformer_decoder(positional_embedding, memory)
+        assert output.size() == (batch_size, DATA.CAPTION_LEN-1, MODEL.EMBEDDING_DIM)
 
-            decoder_output = self.transformer_decoder(
-                tgt=tgt, memory=memory, tgt_mask=tgt_mask)
-            output = self.fc(decoder_output[:, -1, :])
-            assert output.size() == (batch_size, Vocabulary.SIZE)
+        logits = self.output_projection(output)
+        assert logits.size() == (batch_size, DATA.CAPTION_LEN-1, Vocabulary.SIZE)
 
-            outputs.append(output)
-
-            input = output.argmax(1).unsqueeze(1)
-            assert input.size() == (batch_size, 1)
-
-        outputs = stack(outputs, dim=1)
-        assert outputs.size() == (batch_size, DATA.CAPTION_LEN, Vocabulary.SIZE)
-
-        return outputs
+        return logits
