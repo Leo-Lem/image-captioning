@@ -24,7 +24,7 @@ parser.add_argument("--predict", type=str, default=None,
 
 parser.add_argument("--epochs", type=int, default=500,
                     help="number of epochs to train the model")
-parser.add_argument("--patience", type=int, default=10,
+parser.add_argument("--patience", type=int, default=None,
                     help="number of epochs without improvement to stop training")
 parser.add_argument("--batch", type=int, default=512,
                     help="batch size for training")

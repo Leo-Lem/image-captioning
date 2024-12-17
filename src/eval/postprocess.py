@@ -11,16 +11,16 @@ class CaptionPostprocessor:
     def __init__(self):
         self.vocab = Vocabulary()
 
-    def __call__(self, indices: Tensor) -> list[str]:
+    def __call__(self, indexed: Tensor) -> list[str]:
         """ Convert the indices to strings. """
-        assert indices.size() == (indices.size(0), DATA.CAPTION_LEN), indices.size()
-        caption = [self.stringify(self.retokenize(caption))
-                   for caption in indices]
+        assert indexed.size(1) <= DATA.CAPTION_LEN
+        caption = [self.stringify(self.retokenize(indices))
+                   for indices in indexed]
         return caption
 
     def retokenize(self, indices: Tensor) -> list[str]:
         """ Convert a tokenized caption to a string. """
-        assert indices.size() == (DATA.CAPTION_LEN,)
+        assert indices.size(0) <= DATA.CAPTION_LEN
         tokenized = filter(lambda x: x != "<unknown>",
                            [self.vocab[index] for index in indices.tolist()
                             if index not in (Vocabulary.PADDING, Vocabulary.UNKNOWN, Vocabulary.START, Vocabulary.END)])

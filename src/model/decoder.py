@@ -21,19 +21,19 @@ class Decoder(Module):
         self.hidden_to_logits_fc = Linear(in_features=MODEL.HIDDEN_DIM,
                                           out_features=Vocabulary.SIZE)
 
-    def forward(self, image: Tensor, caption: Tensor = None) -> Tensor:
+    def forward(self, images: Tensor, caption: Tensor = None) -> Tensor:
         """ Forward pass for the decoder model that generates a sequence of tokens with optional teacher forcing. """
         raise NotImplementedError("Forward pass not implemented.")
 
-    def predict(self, image: Tensor) -> Tensor:
+    def predict(self, images: Tensor) -> Tensor:
         """ Predict a sequence of indices for the given image. """
         self.eval()
-        indices = self._predict_indices(self(image))
+        indices = self._predict_indices(self(images))
         return indices
 
     def _predict_indices(self, logits: Tensor) -> Tensor:
         """ Predict the token indices from the logits using softmax sampling. """
-        assert logits.size() == (logits.size(0), DATA.CAPTION_LEN, Vocabulary.SIZE)
+        assert logits.size() == (logits.size(0), DATA.CAPTION_LEN-1, Vocabulary.SIZE)
         indices = stack([self._predict_index(logit)
                         for logit in logits], dim=1).transpose(0, 1)
         assert indices.size(1) <= DATA.CAPTION_LEN
@@ -46,9 +46,9 @@ class Decoder(Module):
         assert index.size() == (logit.size(0),)
         return index
 
-    def _validate(self, image: Tensor, caption: Tensor) -> int:
+    def _validate(self, images: Tensor, caption: Tensor) -> int:
         """ Validate the input tensors for the forward pass and retrieve the batch size. """
-        batch_size = image.size(0)
+        batch_size = images.size(0)
         assert caption is None or caption.size() == (batch_size, DATA.CAPTION_LEN)
         return batch_size
 
@@ -58,15 +58,17 @@ class Decoder(Module):
         return index
 
     def _image_to_hidden(self, image: Tensor, batch_size: int) -> Tensor:
-        assert image.size() == (batch_size, 1, DATA.FEATURE_DIM)
-        hidden: Tensor = self.image_to_hidden_fc(image)
+        assert image.size() == (batch_size, DATA.FEATURE_DIM), image.size()
+        hidden: Tensor = self.image_to_hidden_fc(image.unsqueeze(0))
         hidden = hidden.squeeze(1).repeat(MODEL.NUM_LAYERS, 1, 1)
         assert hidden.size() == (MODEL.NUM_LAYERS, batch_size, MODEL.HIDDEN_DIM)
         return hidden
 
-    def _validate_prediction(self, prediction: Tensor) -> Tensor:
+    def _validate_prediction(self, logits: list[Tensor]) -> Tensor:
         """ Validate the prediction tensor. """
-        assert prediction.size() == (prediction.size(0), DATA.CAPTION_LEN, Vocabulary.SIZE)
+        prediction: Tensor = stack(logits, dim=1)
+        assert prediction.size() == \
+            (prediction.size(0), DATA.CAPTION_LEN-1, Vocabulary.SIZE)
         return prediction
 
     best_model_path = PATHS.MODEL(f"{MODEL.NAME}-best.pt")

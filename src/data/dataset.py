@@ -1,10 +1,10 @@
-from torch import Tensor, stack
+from torch import Tensor, vstack, cat
 from torch.utils.data import DataLoader, Dataset
 from typing import Literal
 from pandas import DataFrame, read_csv
 
 from .preprocess import CaptionPreprocessor, ImagePreprocessor
-from __param__ import DEBUG, DATA, PATHS, TRAIN
+from __param__ import DATA, PATHS, TRAIN
 
 
 class CaptionedImageDataset(Dataset):
@@ -18,9 +18,12 @@ class CaptionedImageDataset(Dataset):
     def loader(self, shuffle: bool = False, batch: bool = True) -> DataLoader:
         """ Create a DataLoader from the dataset. """
         def collate_fn(batch: list[tuple[Tensor, Tensor]]) -> tuple[Tensor, Tensor]:
-            images, captions = zip(*batch)
-            images, captions = stack(images), stack(captions)
-            return images, captions
+            images, captions = map(lambda x: cat(x, dim=0), zip(*batch))
+
+            assert captions.size() == (len(batch) * DATA.NUM_CAPTIONS, DATA.CAPTION_LEN)
+            assert images.size() == (len(batch) * DATA.NUM_CAPTIONS, DATA.FEATURE_DIM)
+
+            return images.to(TRAIN.DEVICE), captions.to(TRAIN.DEVICE)
 
         loader = DataLoader(self,
                             batch_size=TRAIN.BATCH_SIZE if batch else 1,
@@ -39,11 +42,15 @@ class CaptionedImageDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx: int) -> tuple[Tensor, Tensor]:
-        """" Get an image and the corresponding captions as tensors. """
+        """" Get the repeated image and the corresponding captions as tensors. """
         image = self.preprocess_image(self.image_name(idx))
-        captions = stack([self.preprocess_caption(caption)
-                         for caption in self.captions(idx)])
+        captions = vstack([self.preprocess_caption(caption)
+                           for caption in self.captions(idx)])
+        image = image.squeeze(0).repeat(DATA.NUM_CAPTIONS, 1)
+
         assert captions.size() == (DATA.NUM_CAPTIONS, DATA.CAPTION_LEN)
+        assert image.size() == (DATA.NUM_CAPTIONS, DATA.FEATURE_DIM)
+
         return image, captions
 
     def image_name(self, idx: int) -> str:

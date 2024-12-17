@@ -11,7 +11,6 @@ from src.model import Decoder
 
 
 def train(model: Decoder, train: CaptionedImageDataset, val: CaptionedImageDataset):
-    """ Train the decoder model. """
     optimizer = Adam(model.parameters(), lr=TRAIN.LEARNING_RATE)
     criterion = CrossEntropyLoss(ignore_index=Vocabulary.PADDING)
     losses: DataFrame = model.load(optimizer)

@@ -33,9 +33,9 @@ class CaptionPreprocessor:
 
     def index(self, caption: str) -> list[int]:
         """ Get the indices of the words in the caption. """
+        # TODO: unify caption length (including or excluding start and end tokens)
         indices = [self.vocab.START] + [self.vocab[word]
                                         for word in caption.split()]
-
         return indices
 
 

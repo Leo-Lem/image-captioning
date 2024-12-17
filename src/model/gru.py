@@ -21,11 +21,11 @@ class GRUDecoder(Decoder):
     def forward(self, image: Tensor, caption: Tensor = None, ratio: float = .5) -> Tensor:
         batch_size = self._validate(image, caption)
 
-        hidden = self._image_to_hidden(image.to(TRAIN.DEVICE), batch_size)
-        index = self._start_index(batch_size).to(TRAIN.DEVICE)
-        logits = tensor([]).to(TRAIN.DEVICE)
+        hidden = self._image_to_hidden(image, batch_size)
+        index = self._start_index(batch_size)
+        logits = []
 
-        for i in range(DATA.CAPTION_LEN):
+        for i in range(DATA.CAPTION_LEN-1):
             embedding: Tensor = self.indices_to_embeddings(index.unsqueeze(1))
             assert embedding.size() == (batch_size, 1, MODEL.EMBEDDING_DIM)
 
@@ -34,11 +34,10 @@ class GRUDecoder(Decoder):
 
             logit: Tensor = self.hidden_to_logits_fc(output.squeeze(1))
             assert logit.size() == (batch_size, Vocabulary.SIZE)
+            logits.append(logit)
 
             index: Tensor = self._predict_index(logit)\
-                if caption is None or rand(1).item() < ratio else caption.to(TRAIN.DEVICE)[:, i]
+                if caption is None or rand(1).item() < ratio else caption[:, i]
             assert index.size() == (batch_size,)
-
-            logits = cat([logits, logit.unsqueeze(1)], dim=1)
 
         return self._validate_prediction(logits)

@@ -32,8 +32,8 @@ def test(model: Decoder, data: CaptionedImageDataset):
 
     for images, captions in tqdm(data.loader(), desc="Testing", unit="batch"):
         true = [[caption.split(" ")
-                for caption in postprocess(indices)]
-                for indices in captions[:, 1:, :]]
+                for caption in indices]
+                for indices in postprocess(captions)]
         pred = [caption.split(" ")
                 for caption in postprocess(model.predict(images))]
 

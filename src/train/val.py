@@ -11,16 +11,13 @@ def validate(model: Module, val: DataLoader, criterion: CrossEntropyLoss) -> flo
     model.eval()
     total_loss = 0.0
     with no_grad():
-        for image, captions in (batches := tqdm(val, desc="Validation", unit="batch")):
-            prediction: Tensor = model(image)
-            predictions = prediction\
-                .unsqueeze(1)\
-                .repeat(1, DATA.NUM_CAPTIONS, 1, 1)
-            predictions = predictions.view(-1, predictions.size(-1))
-            targets: Tensor = captions.view(-1)
+        for images, captions in (batches := tqdm(val, desc="Validation", unit="batch")):
+            predictions: Tensor = model(images)
+            targets: Tensor = captions[:, 1:]
+            assert targets.size() == (predictions.size(0), predictions.size(1))
 
-            loss: Tensor = criterion(predictions, targets.to(TRAIN.DEVICE)) / \
-                targets.ne(Vocabulary.PADDING).sum()
+            loss: Tensor = criterion(predictions.view(-1, predictions.size(-1)),
+                                     targets.reshape(-1))
             total_loss += loss.item()
             batches.set_postfix(loss=total_loss / len(batches))
     return total_loss / len(val)

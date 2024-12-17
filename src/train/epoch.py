@@ -1,6 +1,6 @@
-from torch import Tensor
+from torch import Tensor, stack
 from torch.optim import Adam
-from torch.nn import Module, CrossEntropyLoss
+from torch.nn import CrossEntropyLoss
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -14,19 +14,15 @@ def train_epoch(model: Decoder, train: DataLoader, optimizer: Adam, criterion: C
     model.train()
     total_loss = 0.0
 
-    for image, captions in (batches := tqdm(train, desc="Training", unit="batch")):
+    for images, captions in (batches := tqdm(train, desc="Training", unit="batch")):
         optimizer.zero_grad()
 
-        prediction: Tensor = model(image,
-                                   captions[:, 0, :], teacher_forcing_ratio)
-        predictions = prediction\
-            .unsqueeze(1)\
-            .repeat(1, DATA.NUM_CAPTIONS, 1, 1)
-        predictions = predictions.view(-1, predictions.size(-1))
-        targets: Tensor = captions.view(-1)
+        predictions: Tensor = model(images, captions, teacher_forcing_ratio)
+        targets: Tensor = captions[:, 1:]
+        assert targets.size() == (predictions.size(0), predictions.size(1))
 
-        loss: Tensor = criterion(predictions, targets.to(TRAIN.DEVICE)) / \
-            targets.ne(Vocabulary.PADDING).sum()
+        loss: Tensor = criterion(predictions.view(-1, predictions.size(-1)),
+                                 targets.reshape(-1))
         total_loss += loss.item()
         batches.set_postfix(loss=total_loss / len(batches))
 

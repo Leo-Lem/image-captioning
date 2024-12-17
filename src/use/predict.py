@@ -49,7 +49,7 @@ def predictions(model: Decoder, data: CaptionedImageDataset, n: int):
     for i in tqdm(range(n), desc="Predicting", unit="image", disable=not FLAGS.DEBUG()):
         image_name = data.image_name(i)
         image = preprocess_image(image_name)
-        caption = postprocess_caption(model.predict(image.unsqueeze(0)))[0]
+        caption = postprocess_caption(model.predict(image))[0]
         display(image_name, caption, data.captions(i)[0], ax=axes[i])
 
     for ax in axes:
