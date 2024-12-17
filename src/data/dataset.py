@@ -29,7 +29,6 @@ class CaptionedImageDataset(Dataset):
                             batch_size=TRAIN.BATCH_SIZE if batch else 1,
                             collate_fn=collate_fn,
                             shuffle=shuffle,
-                            num_workers=4,
                             pin_memory=TRAIN.DEVICE == "cuda")
 
         return loader
