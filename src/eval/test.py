@@ -8,7 +8,7 @@ from statistics import mean
 from tqdm import tqdm
 from warnings import filterwarnings
 
-from __param__ import DEBUG, FLAGS, PATHS
+from __param__ import DEBUG, FLAGS, PATHS, MODEL
 from .postprocess import CaptionPostprocessor
 from src.data import CaptionedImageDataset
 from src.model import Decoder
@@ -64,7 +64,7 @@ def test(model: Decoder, data: CaptionedImageDataset):
         }
     DEBUG(f"Metrics: {metrics.head(3)}")
 
-    result = DataFrame({"Model": [model.__class__.__name__],
+    result = DataFrame({"Model": [MODEL.NAME],
                         "BLEU": [metrics["BLEU"].mean()],
                         "METEOR": [metrics["METEOR"].mean()],
                         "NIST": [metrics["NIST"].mean()]})\
