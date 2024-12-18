@@ -43,7 +43,7 @@ def test(model: Decoder, data: CaptionedImageDataset):
             return 0
 
         try:
-            bleu_val = corpus_bleu(true, pred)
+            bleu_val = corpus_bleu(true, pred, weights=(.5, .5))
         except Exception as e:
             bleu_val = failed("BLEU", e)
 
@@ -53,7 +53,7 @@ def test(model: Decoder, data: CaptionedImageDataset):
             meteor_val = failed("METEOR", e)
 
         try:
-            nist_val = corpus_nist(true, pred)
+            nist_val = corpus_nist(true, pred, n=4)
         except Exception as e:
             nist_val = failed("NIST", e)
 
@@ -68,7 +68,7 @@ def test(model: Decoder, data: CaptionedImageDataset):
                         "BLEU": [metrics["BLEU"].mean()],
                         "METEOR": [metrics["METEOR"].mean()],
                         "NIST": [metrics["NIST"].mean()]})\
-        .round(4)\
+        .round(8)\
         .set_index("Model")
     file = PATHS.OUT("metrics.csv")
     result.to_csv(file, index=True, mode="a", header=not exists(file))
