@@ -8,7 +8,7 @@ from statistics import mean
 from tqdm import tqdm
 from warnings import filterwarnings
 
-from __param__ import DEBUG, FLAGS, PATHS, MODEL
+from __param__ import DEBUG, FLAGS, PATHS, MODEL, DATA
 from .postprocess import CaptionPostprocessor
 from src.data import CaptionedImageDataset
 from src.model import Decoder
@@ -31,11 +31,14 @@ def test(model: Decoder, data: CaptionedImageDataset):
     metrics = DataFrame(columns=["BLEU", "METEOR", "NIST"])
 
     for images, captions in tqdm(data.loader(), desc="Testing", unit="batch"):
-        true = [[caption.split(" ")
-                for caption in indices]
-                for indices in postprocess(captions)]
+        true = [
+            [caption.split(" ")
+             for caption in postprocess(captions[i:i + DATA.NUM_CAPTIONS])]
+            for i in range(0, len(captions), DATA.NUM_CAPTIONS)
+        ]
         pred = [caption.split(" ")
-                for caption in postprocess(model.predict(images))]
+                for caption in postprocess(model.predict(images[::DATA.NUM_CAPTIONS]))]
+        assert len(true) == len(pred)
 
         def failed(metric: str, e: Exception) -> int:
             DEBUG(
@@ -43,7 +46,7 @@ def test(model: Decoder, data: CaptionedImageDataset):
             return 0
 
         try:
-            bleu_val = corpus_bleu(true, pred, weights=(.5, .5))
+            bleu_val = corpus_bleu(true, pred, weights=(1, 0, 0, 0))
         except Exception as e:
             bleu_val = failed("BLEU", e)
 
@@ -68,7 +71,7 @@ def test(model: Decoder, data: CaptionedImageDataset):
                         "BLEU": [metrics["BLEU"].mean()],
                         "METEOR": [metrics["METEOR"].mean()],
                         "NIST": [metrics["NIST"].mean()]})\
-        .round(8)\
+        .round(4)\
         .set_index("Model")
     file = PATHS.OUT("metrics.csv")
     result.to_csv(file, index=True, mode="a", header=not exists(file))

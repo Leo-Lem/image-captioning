@@ -11,7 +11,7 @@ def reformat():
 
     data = load_flickr8k()
     data = group_captions(data)
-    train, val, test = split(data)
+    train, val, test = split(data, .8, .1, .1)
     sample = data.sample(16)
     [save(data, name)for data, name in zip([data, train, val, test, sample],
                                            ["full", "train", "val", "test", "sample"])]
@@ -19,8 +19,8 @@ def reformat():
 
 def is_reformatted() -> bool:
     """ Check if the dataset has been preprocessed. """
-    return not DATA.RELOAD and all([exists(PATHS.OUT(f"{name}.csv"))
-                                    for name in ["train", "val", "test", "sample"]])
+    return not DATA.RELOAD and all([exists(PATHS.OUT(f"data-{name}.csv"))
+                                    for name in ["train", "val", "test"]])
 
 
 def load_flickr8k() -> DataFrame:
@@ -40,7 +40,7 @@ def group_captions(captions: DataFrame) -> DataFrame:
     return data
 
 
-def split(data: DataFrame, train: float = 0.6, val: float = 0.2, test: float = 0.2) -> tuple[DataFrame, DataFrame, DataFrame]:
+def split(data: DataFrame, train: float, val: float, test: float) -> tuple[DataFrame, DataFrame, DataFrame]:
     """ Split the dataset into train, validation, and test sets. """
 
     data = data.sample(frac=1)

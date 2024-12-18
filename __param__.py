@@ -85,7 +85,7 @@ class DATA:
 
 
 class MODEL:
-    NAME = f"model-{args.approach}"
+    NAME = args.approach
     HIDDEN_DIM = 512
     EMBEDDING_DIM = 256
     NUM_LAYERS = 2

@@ -24,6 +24,6 @@ if FLAGS.PREDICT:
     display(FLAGS.PREDICT, predict(model, FLAGS.PREDICT))
 else:
     print_data()
-    plot_metrics(references={"BLEU": 0.0, "METEOR": 0.0, "NIST": 0.0})
+    plot_metrics(references={})
     plot_training()
     predictions(model, testing, n=9)
