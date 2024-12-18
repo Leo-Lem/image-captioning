@@ -10,7 +10,6 @@ Evaluate different decoder architectures:
 - Transformer
 
 Models are evaluated using:
-- Accuracy
 - BLEU
 - METEOR
 - NIST
