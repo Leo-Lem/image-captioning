@@ -46,7 +46,8 @@ def test(model: Decoder, data: CaptionedImageDataset):
             return 0
 
         try:
-            bleu_val = corpus_bleu(true, pred, weights=(1, 0, 0, 0))
+            bleu_val = corpus_bleu(true, pred,
+                                   weights=(.5, .5))
         except Exception as e:
             bleu_val = failed("BLEU", e)
 
@@ -56,7 +57,8 @@ def test(model: Decoder, data: CaptionedImageDataset):
             meteor_val = failed("METEOR", e)
 
         try:
-            nist_val = corpus_nist(true, pred, n=4)
+            nist_val = corpus_nist(true, pred,
+                                   n=4)
         except Exception as e:
             nist_val = failed("NIST", e)
 
